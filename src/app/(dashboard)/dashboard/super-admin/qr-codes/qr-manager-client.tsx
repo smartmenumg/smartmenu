@@ -87,7 +87,6 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
   };
 
   const handleSave = () => {
-    if (currentLayout.rows.length === 0) return;
     startTransition(async () => {
       setSaveStatus("idle");
       setSaveError(null);
@@ -328,7 +327,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleSave}
-                disabled={isPending || currentLayout.rows.length === 0}
+                disabled={isPending}
                 className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
               >
                 {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
