@@ -522,7 +522,7 @@ function ProductCard({
         <div className="flex-1">
           <p className="font-semibold text-sm text-white leading-snug line-clamp-2">{product.name}</p>
           {product.description && (
-            <p className="text-[11px] mt-0.5 line-clamp-1" style={{color:"rgba(255,255,255,0.4)"}}>{product.description}</p>
+            <p className="text-[11px] mt-0.5" style={{color:"rgba(255,255,255,0.4)"}}>{product.description}</p>
           )}
         </div>
 
@@ -596,6 +596,9 @@ function CartView({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{item.product.name}</p>
+                {item.product.description && (
+                  <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{item.product.description}</p>
+                )}
                 {item.customizations && item.customizations.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-0.5">
                     {item.customizations.map((c) => (
