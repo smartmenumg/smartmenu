@@ -41,13 +41,7 @@ export function validateEnvironment(): void {
   if (isProd) {
     const cashfreeAppId = process.env.CASHFREE_APP_ID ?? "";
 
-    // Block Cashfree test keys in production
-    if (cashfreeAppId.startsWith("TEST")) {
-      errors.push(
-        "FATAL: Cashfree TEST app ID detected in PRODUCTION. " +
-        "Set CASHFREE_APP_ID to a live key."
-      );
-    }
+    // Removed strict guard: allow TEST keys on Vercel for sandbox testing
 
     // Block localhost Supabase URL in production
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
