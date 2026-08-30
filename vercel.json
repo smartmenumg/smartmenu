@@ -1,0 +1,33 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["bom1"],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/api/webhooks/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ],
+  "functions": {
+    "src/app/api/webhooks/razorpay/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/checkout/create-order/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/checkout/verify-payment/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}
