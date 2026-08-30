@@ -29,9 +29,10 @@ import {
 interface QRManagerClientProps {
   auditoriums: AuditoriumWithLayout[];
   baseUrl: string;
+  initialSignedUrls: Record<string, Record<string, string>>;
 }
 
-export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl }: QRManagerClientProps) {
+export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSignedUrls }: QRManagerClientProps) {
   const [selectedAudiId, setSelectedAudiId] = useState<string>(auditoriums[0]?.id ?? "");
   const [layouts, setLayouts] = useState<Record<string, SeatLayout>>(() => {
     const init: Record<string, SeatLayout> = {};
@@ -44,8 +45,8 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl }: QRManag
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Signed URLs for printing — generated server-side right before print
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  // Signed URLs — pre-generated server-side per audi
+  const [signedUrls, setSignedUrls] = useState<Record<string, Record<string, string>>>(initialSignedUrls);
   const [isPrinting, setIsPrinting] = useState(false);
 
   // Editable base URL — defaults to server-detected, but admin can override
@@ -122,17 +123,18 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl }: QRManag
   const makePreviewUrl = (seat: string) =>
     `${customBaseUrl}/order?audi=${selectedAudiId}&seat=${encodeURIComponent(seat)}&sig=preview`;
 
-  // The URL to use for each seat in the print layout
+  // The URL to use for each seat — prefer server-pre-signed, fall back to preview
+  const currentSignedUrls = signedUrls[selectedAudiId] ?? {};
   const getPrintUrl = (seat: string) =>
-    signedUrls[seat] ?? makePreviewUrl(seat);
+    currentSignedUrls[seat] ?? makePreviewUrl(seat);
 
   const handlePrint = async () => {
-    // If not signed yet, fetch before printing
-    if (Object.keys(signedUrls).length !== allSeats.length) {
+    // If not signed yet for this audi, fetch via server action before printing
+    if (!signedUrls[selectedAudiId] || Object.keys(signedUrls[selectedAudiId] ?? {}).length === 0) {
       setIsPrinting(true);
       try {
         const signed = await getSignedQrUrls(selectedAudiId, allSeats, customBaseUrl);
-        setSignedUrls(signed);
+        setSignedUrls(prev => ({ ...prev, [selectedAudiId]: signed }));
         await new Promise((r) => setTimeout(r, 150));
       } finally {
         setIsPrinting(false);
@@ -141,18 +143,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl }: QRManag
     window.print();
   };
 
-  // Automatically fetch signed URLs in the background when the layout is valid
-  // so the on-screen QR codes can be scanned and tested directly without printing.
-  const allSeatsKey = JSON.stringify(allSeats);
-  useEffect(() => {
-    if (allSeats.length === 0) return;
-    const timer = setTimeout(async () => {
-      const signed = await getSignedQrUrls(selectedAudiId, allSeats, customBaseUrl);
-      setSignedUrls(signed);
-    }, 800); // 800ms debounce
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAudiId, allSeatsKey, customBaseUrl]);
+  // No useEffect needed — signed URLs come pre-generated from the server.
 
   return (
     <>

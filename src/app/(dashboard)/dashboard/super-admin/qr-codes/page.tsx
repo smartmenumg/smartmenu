@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getCurrentProfile } from "@/lib/auth/actions";
 import { getAuditoriumsWithLayout } from "@/lib/admin/qr-actions";
+import { signSeat } from "@/lib/admin/qr-utils";
 import { QRManagerClient } from "./qr-manager-client";
 
 export const metadata: Metadata = {
@@ -32,10 +33,26 @@ export default async function QRCodesPage() {
     );
   }
 
+  // Pre-generate all signed URLs server-side so the client never needs to call a server action.
+  // This avoids client/server action issues on Vercel edge deployments.
+  const initialSignedUrls: Record<string, Record<string, string>> = {};
+  for (const audi of auditoriums) {
+    const audiSigned: Record<string, string> = {};
+    for (const row of (audi.seat_layout?.rows ?? [])) {
+      for (let s = row.from; s <= row.to; s++) {
+        const seat = `${row.name}${s}`;
+        const sig = signSeat(audi.id, seat);
+        audiSigned[seat] = `${baseUrl}/order?audi=${audi.id}&seat=${encodeURIComponent(seat)}&sig=${sig}`;
+      }
+    }
+    initialSignedUrls[audi.id] = audiSigned;
+  }
+
   return (
     <QRManagerClient
       auditoriums={auditoriums}
       baseUrl={baseUrl}
+      initialSignedUrls={initialSignedUrls}
     />
   );
 }
