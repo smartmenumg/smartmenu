@@ -32,23 +32,13 @@ export async function getSignedQrUrls(
   seats: string[],
   baseUrl: string
 ): Promise<Record<string, string>> {
-  try {
-    const session = await getCurrentProfile();
-    // Temporarily disabled role check to fix Vercel preview signing issue.
-    if (!session) {
-      console.warn("[QR Actions] No session, proceeding anyway for QR generation.");
-    }
-
-    const result: Record<string, string> = {};
-    for (const seat of seats) {
-      const sig = signSeat(audiId, seat);
-      result[seat] = `${baseUrl}/order?audi=${audiId}&seat=${encodeURIComponent(seat)}&sig=${sig}`;
-    }
-    return result;
-  } catch (err) {
-    console.error("[QR Actions] Error:", err);
-    return {};
+  console.log(`[QR Actions] Generating signatures for ${seats.length} seats in audi ${audiId}`);
+  const result: Record<string, string> = {};
+  for (const seat of seats) {
+    const sig = signSeat(audiId, seat);
+    result[seat] = `${baseUrl}/order?audi=${audiId}&seat=${encodeURIComponent(seat)}&sig=${sig}`;
   }
+  return result;
 }
 
 // ─── Auditorium helpers ───────────────────────────────────────────────────────
