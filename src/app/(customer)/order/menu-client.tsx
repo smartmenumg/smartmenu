@@ -183,7 +183,13 @@ export function MenuClient({ theatreName, categories, products, auditoriums, qrA
             </div>
             <div>
               <p className="font-display font-semibold text-white text-base leading-none tracking-tight">{theatreName}</p>
-              <p className="text-[10px] text-amber-500/60 font-medium tracking-[0.2em] uppercase mt-0.5">Menu</p>
+              {isQrScan ? (
+                <p className="text-[10px] text-emerald-400 font-bold tracking-[0.1em] uppercase mt-0.5 flex items-center gap-1">
+                  <span>●</span> Seat {qrSeat} Locked
+                </p>
+              ) : (
+                <p className="text-[10px] text-amber-500/60 font-medium tracking-[0.2em] uppercase mt-0.5">Menu</p>
+              )}
             </div>
           </div>
 
