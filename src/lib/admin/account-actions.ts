@@ -2,6 +2,8 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { createStaffUser } from "@/lib/auth/actions";
+import { createUserSchema } from "@/lib/validations/schemas";
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/audit/logger";
 import type { UserRole } from "@/types/database";
@@ -23,10 +25,6 @@ export async function getProfiles(): Promise<ProfileWithEmail[]> {
 
   const admin = await createAdminClient();
 
-  // Note: auth.users is not queryable via standard API in public schema,
-  // but we can fetch profiles. Since the auth email isn't in profiles,
-  // we will just return profiles as-is for the MVP (or fetch auth users via Admin API if needed).
-  // For simplicity without exposing service_role keys to the client, we just fetch profiles.
   const { data, error } = await admin
     .from("profiles")
     .select("*")
@@ -81,6 +79,10 @@ export async function updateProfileRole(profileId: string, newRole: UserRole) {
     return { error: "Unauthorized" };
   }
 
+  if (newRole === "super_admin") {
+    return { error: "Super admin role cannot be assigned via the dashboard." };
+  }
+
   // Prevent self-demotion
   if (profileId === session.user.id && newRole !== "super_admin") {
     return { error: "You cannot demote your own super admin role" };
@@ -100,11 +102,52 @@ export async function updateProfileRole(profileId: string, newRole: UserRole) {
 
   await logAudit({
     userId: session.user.id,
-    action: "account.updated", // or similar if we define role updated
+    action: "account.updated",
     entityType: "profile",
     entityId: profileId,
     metadata: { role: newRole }
   });
+
+  revalidatePath("/dashboard/super-admin/accounts");
+  return {};
+}
+
+/**
+ * Server action: create a new staff account for this theatre.
+ * Super admin only. Wraps createStaffUser + validates + revalidates UI.
+ */
+export async function createStaffAccount(params: {
+  email: string;
+  password: string;
+  role: "menu" | "admin";
+  full_name: string;
+}): Promise<{ error?: string }> {
+  const session = await getCurrentProfile();
+  if (!session || session.profile.role !== "super_admin") {
+    return { error: "Unauthorized" };
+  }
+
+  // Validate input
+  const parsed = createUserSchema.safeParse({
+    email: params.email,
+    password: params.password,
+    role: params.role,
+    full_name: params.full_name,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message };
+  }
+
+  const result = await createStaffUser({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    role: parsed.data.role,
+    fullName: parsed.data.full_name,
+    theatreId: session.profile.theatre_id,
+    createdBy: session.user.id,
+  });
+
+  if (result.error) return { error: result.error };
 
   revalidatePath("/dashboard/super-admin/accounts");
   return {};

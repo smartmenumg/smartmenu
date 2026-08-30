@@ -129,8 +129,8 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
     currentSignedUrls[seat] ?? makePreviewUrl(seat);
 
   const handlePrint = async () => {
-    // If not signed yet for this audi, fetch via server action before printing
-    if (!signedUrls[selectedAudiId] || Object.keys(signedUrls[selectedAudiId] ?? {}).length === 0) {
+    // If we have added or removed seats, fetch the latest signatures before printing
+    if (Object.keys(currentSignedUrls).length !== allSeats.length) {
       setIsPrinting(true);
       try {
         const signed = await getSignedQrUrls(selectedAudiId, allSeats, customBaseUrl);
@@ -143,7 +143,25 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
     window.print();
   };
 
-  // No useEffect needed — signed URLs come pre-generated from the server.
+  // Automatically fetch signed URLs in the background when the layout is modified
+  // so the on-screen QR codes are immediately valid without waiting for Print.
+  const allSeatsKey = JSON.stringify(allSeats);
+  useEffect(() => {
+    if (allSeats.length === 0) return;
+    // If we already have signatures for exactly all these seats, skip
+    if (Object.keys(currentSignedUrls).length === allSeats.length) return;
+    
+    const timer = setTimeout(async () => {
+      try {
+        const signed = await getSignedQrUrls(selectedAudiId, allSeats, customBaseUrl);
+        setSignedUrls(prev => ({ ...prev, [selectedAudiId]: signed }));
+      } catch (e) {
+        console.error("Background sign fetch failed:", e);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAudiId, allSeatsKey, customBaseUrl]);
 
   return (
     <>
@@ -382,7 +400,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
                     key={seat}
                     className="flex flex-col items-center gap-1.5 bg-white rounded-xl p-2.5 border border-slate-200 shadow-sm"
                   >
-                    <QRCodeSVG value={makePreviewUrl(seat)} size={90} level="H" includeMargin={false} />
+                    <QRCodeSVG value={getPrintUrl(seat)} size={90} level="H" includeMargin={false} />
                     <div className="text-center leading-tight">
                       <p className="text-[10px] font-medium text-slate-500">{selectedAudi?.name}</p>
                       <p className="text-slate-900 text-lg font-black">{seat}</p>
