@@ -147,6 +147,6 @@ export async function getActiveTheatre() {
     .select("id, name, slug")
     .eq("active", true)
     .limit(1)
-    .single<{ id: string; name: string; slug: string }>();
+    .maybeSingle<{ id: string; name: string; slug: string }>();
   return data;
 }
