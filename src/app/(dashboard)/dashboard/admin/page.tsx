@@ -8,7 +8,16 @@ export const revalidate = 0;
 
 export default async function AdminDashboardPage() {
   const session = await getCurrentProfile();
-  if (!session || !["admin", "super_admin"].includes(session.profile.role)) {
+  if (!session) {
+    redirect("/auth/unauthorized");
+  }
+
+  const { role, permissions } = session.profile;
+  const hasAccess = 
+    role === "super_admin" || 
+    (role === "admin" && permissions?.includes("live_orders"));
+
+  if (!hasAccess) {
     redirect("/auth/unauthorized");
   }
 

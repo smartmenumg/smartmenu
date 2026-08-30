@@ -13,6 +13,7 @@ export interface ProfileWithEmail {
   role: UserRole;
   full_name: string | null;
   active: boolean;
+  permissions: string[];
   created_at: string;
   email?: string; 
 }
@@ -112,6 +113,36 @@ export async function updateProfileRole(profileId: string, newRole: UserRole) {
   return {};
 }
 
+export async function updateProfilePermissions(profileId: string, permissions: string[]) {
+  const session = await getCurrentProfile();
+  if (!session || session.profile.role !== "super_admin") {
+    return { error: "Unauthorized" };
+  }
+
+  const admin = await createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (admin as any)
+    .from("profiles")
+    .update({ permissions, updated_at: new Date().toISOString() })
+    .eq("id", profileId)
+    .eq("theatre_id", session.profile.theatre_id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  await logAudit({
+    userId: session.user.id,
+    action: "account.updated",
+    entityType: "profile",
+    entityId: profileId,
+    metadata: { permissions }
+  });
+
+  revalidatePath("/dashboard/super-admin/accounts");
+  return {};
+}
+
 /**
  * Server action: create a new staff account for this theatre.
  * Super admin only. Wraps createStaffUser + validates + revalidates UI.
@@ -121,6 +152,7 @@ export async function createStaffAccount(params: {
   password: string;
   role: "menu" | "admin";
   full_name: string;
+  permissions: string[];
 }): Promise<{ error?: string }> {
   const session = await getCurrentProfile();
   if (!session || session.profile.role !== "super_admin") {
@@ -143,6 +175,7 @@ export async function createStaffAccount(params: {
     password: parsed.data.password,
     role: parsed.data.role,
     fullName: parsed.data.full_name,
+    permissions: params.permissions,
     theatreId: session.profile.theatre_id,
     createdBy: session.user.id,
   });

@@ -23,9 +23,17 @@ export const metadata: Metadata = {
 
 export default async function RevenuePage() {
   const session = await getCurrentProfile();
-  
-  if (!session || session.profile.role !== "super_admin") {
-    redirect("/dashboard/admin");
+  if (!session) {
+    redirect("/auth/unauthorized");
+  }
+
+  const { role, permissions } = session.profile;
+  const hasAccess = 
+    role === "super_admin" || 
+    (role === "admin" && permissions?.includes("revenue"));
+
+  if (!hasAccess) {
+    redirect("/auth/unauthorized");
   }
 
   const { metrics, error } = await getRevenueMetrics();

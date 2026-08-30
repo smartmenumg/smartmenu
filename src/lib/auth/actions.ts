@@ -75,13 +75,14 @@ export async function getCurrentProfile() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, active, full_name, theatre_id")
+    .select("role, active, full_name, theatre_id, permissions")
     .eq("id", user.id)
     .single<{
       role: UserRole;
       active: boolean;
       full_name: string | null;
       theatre_id: string;
+      permissions: string[];
     }>();
 
   if (!profile || !profile.active) return null;
@@ -96,6 +97,7 @@ export async function createStaffUser(params: {
   password: string;
   role: "menu" | "admin";
   fullName: string;
+  permissions?: string[];
   theatreId: string;
   createdBy: string;
 }): Promise<{ error?: string; userId?: string }> {
@@ -113,15 +115,20 @@ export async function createStaffUser(params: {
   }
 
   // Create profile
-  const profilePayload = {
+  const profilePayload: any = {
     id: newUser.user.id,
     theatre_id: params.theatreId,
     role: params.role,
     full_name: params.fullName,
     active: true,
   };
+  
+  if (params.permissions) {
+    profilePayload.permissions = params.permissions;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: profileError } = await adminClient.from("profiles").insert(profilePayload as any);
+  const { error: profileError } = await adminClient.from("profiles").insert(profilePayload);
 
   if (profileError) {
     // Rollback: delete the auth user

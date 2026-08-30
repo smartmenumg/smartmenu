@@ -13,8 +13,17 @@ export const metadata: Metadata = {
 
 export default async function QRCodesPage() {
   const session = await getCurrentProfile();
-  if (!session || !["admin", "super_admin"].includes(session.profile.role)) {
-    redirect("/dashboard/admin");
+  if (!session) {
+    redirect("/auth/unauthorized");
+  }
+
+  const { role, permissions } = session.profile;
+  const hasAccess = 
+    role === "super_admin" || 
+    (role === "admin" && permissions?.includes("qr_codes"));
+
+  if (!hasAccess) {
+    redirect("/auth/unauthorized");
   }
 
   const auditoriums = await getAuditoriumsWithLayout();

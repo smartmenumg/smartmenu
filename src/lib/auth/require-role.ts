@@ -6,6 +6,7 @@ export interface AuthContext {
   user: User;
   role: UserRole;
   theatreId: string;
+  permissions: string[];
 }
 
 /**
@@ -33,9 +34,9 @@ export async function requireRole(
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("role, theatre_id, active")
+    .select("role, theatre_id, active, permissions")
     .eq("id", user.id)
-    .single<Pick<Profile, "role" | "theatre_id" | "active">>();
+    .single<Pick<Profile, "role" | "theatre_id" | "active" | "permissions">>();
 
   if (profileError || !profile) {
     throw new AuthorizationError("Unauthorized", 401);
@@ -53,6 +54,7 @@ export async function requireRole(
     user,
     role: profile.role,
     theatreId: profile.theatre_id,
+    permissions: profile.permissions,
   };
 }
 

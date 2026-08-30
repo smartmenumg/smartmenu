@@ -6,6 +6,7 @@ import {
   toggleProfileActive,
   updateProfileRole,
   createStaffAccount,
+  updateProfilePermissions,
 } from "@/lib/admin/account-actions";
 import { UserRole } from "@/types/database";
 import { format } from "date-fns";
@@ -27,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   User,
   AlertCircle,
@@ -39,6 +41,7 @@ import {
   ShieldCheck,
   Shield,
   Wrench,
+  Settings2,
 } from "lucide-react";
 
 interface AccountsClientProps {
@@ -67,6 +70,15 @@ const ROLE_META: Record<
   },
 };
 
+const PERMISSIONS_META = [
+  { id: "live_orders", label: "Live Orders", desc: "Manage incoming orders" },
+  { id: "menu", label: "Menu", desc: "Manage products & categories" },
+  { id: "revenue", label: "Revenue", desc: "View sales & revenue metrics" },
+  { id: "accounts", label: "Accounts", desc: "Manage staff accounts" },
+  { id: "audit_logs", label: "Audit Logs", desc: "View system audit history" },
+  { id: "qr_codes", label: "QR Codes", desc: "Generate table QR codes" },
+];
+
 // ─── Create Staff Modal ───────────────────────────────────────────────────────
 
 function CreateStaffModal({ onClose }: { onClose: () => void }) {
@@ -80,6 +92,7 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
     email: "",
     password: "",
     role: "admin" as "admin" | "menu",
+    permissions: ["live_orders", "menu", "qr_codes"] as string[],
   });
 
   const set =
@@ -87,8 +100,22 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
+  const togglePermission = (permId: string) => {
+    setForm((prev) => {
+      const perms = prev.permissions.includes(permId)
+        ? prev.permissions.filter((p) => p !== permId)
+        : [...prev.permissions, permId];
+      return { ...prev, permissions: perms };
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.role === "admin" && form.permissions.length === 0) {
+      setError("Please select at least one permission for the admin role.");
+      return;
+    }
+
     startTransition(async () => {
       setError(null);
       const res = await createStaffAccount(form);
@@ -103,17 +130,14 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
-
-      {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-md rounded-2xl border border-slate-700/80 bg-slate-900 shadow-2xl shadow-black/60 animate-in fade-in zoom-in-95 duration-200">
+        <div className="relative w-full max-w-md rounded-2xl border border-slate-700/80 bg-slate-900 shadow-2xl shadow-black/60 animate-in fade-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[90vh]">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                 <UserPlus className="w-4 h-4 text-amber-400" />
@@ -136,121 +160,272 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {success ? (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-                </div>
-                <p className="text-emerald-300 font-semibold text-sm">
-                  Account created successfully!
-                </p>
-              </div>
-            ) : (
-              <>
-                {error && (
-                  <div className="flex items-start gap-2.5 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
-                    <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                    <p className="text-sm text-red-300">{error}</p>
+          <div className="overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {success ? (
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-400" />
                   </div>
-                )}
-
-                {/* Full Name */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Full Name
-                  </Label>
-                  <Input
-                    required
-                    value={form.full_name}
-                    onChange={set("full_name")}
-                    placeholder="e.g. Priya Sharma"
-                    className="bg-slate-800/70 border-slate-700 text-white placeholder:text-slate-600 focus:border-amber-500/50"
-                  />
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Email Address
-                  </Label>
-                  <Input
-                    required
-                    type="email"
-                    value={form.email}
-                    onChange={set("email")}
-                    placeholder="staff@example.com"
-                    className="bg-slate-800/70 border-slate-700 text-white placeholder:text-slate-600 focus:border-amber-500/50"
-                  />
-                </div>
-
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      required
-                      type={showPass ? "text" : "password"}
-                      value={form.password}
-                      onChange={set("password")}
-                      placeholder="Min 12 chars, mixed case + symbol"
-                      className="bg-slate-800/70 border-slate-700 text-white placeholder:text-slate-600 focus:border-amber-500/50 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPass((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                    >
-                      {showPass ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-slate-600">
-                    Must be at least 12 characters with uppercase, lowercase,
-                    number &amp; symbol.
+                  <p className="text-emerald-300 font-semibold text-sm">
+                    Account created successfully!
                   </p>
                 </div>
-
-                {/* Role */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Role
-                  </Label>
-                  <select
-                    value={form.role}
-                    onChange={set("role")}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-800/70 border border-slate-700 text-white text-sm outline-none focus:border-amber-500/50 transition-colors"
-                  >
-                    <option value="admin">Admin — full order &amp; menu management</option>
-                    <option value="menu">Menu Manager — menu editing only</option>
-                  </select>
-                </div>
-
-                {/* Submit */}
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold mt-2"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating account…
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Create Account
-                    </>
+              ) : (
+                <>
+                  {error && (
+                    <div className="flex items-start gap-2.5 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
+                      <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                      <p className="text-sm text-red-300">{error}</p>
+                    </div>
                   )}
-                </Button>
-              </>
+
+                  {/* Full Name */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Full Name
+                    </Label>
+                    <Input
+                      required
+                      value={form.full_name}
+                      onChange={set("full_name")}
+                      placeholder="e.g. Priya Sharma"
+                      className="bg-slate-800/70 border-slate-700 text-white placeholder:text-slate-600 focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Email Address
+                    </Label>
+                    <Input
+                      required
+                      type="email"
+                      value={form.email}
+                      onChange={set("email")}
+                      placeholder="staff@example.com"
+                      className="bg-slate-800/70 border-slate-700 text-white placeholder:text-slate-600 focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        required
+                        type={showPass ? "text" : "password"}
+                        value={form.password}
+                        onChange={set("password")}
+                        placeholder="Min 12 chars, mixed case + symbol"
+                        className="bg-slate-800/70 border-slate-700 text-white placeholder:text-slate-600 focus:border-amber-500/50 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPass((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      >
+                        {showPass ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      Must be at least 12 characters with uppercase, lowercase,
+                      number &amp; symbol.
+                    </p>
+                  </div>
+
+                  {/* Role */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Role
+                    </Label>
+                    <select
+                      value={form.role}
+                      onChange={set("role")}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-800/70 border border-slate-700 text-white text-sm outline-none focus:border-amber-500/50 transition-colors"
+                    >
+                      <option value="admin">Admin — granular permissions</option>
+                      <option value="menu">Menu Manager — menu editing only</option>
+                    </select>
+                  </div>
+
+                  {form.role === "admin" && (
+                    <div className="space-y-3 pt-2">
+                      <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        Permissions
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PERMISSIONS_META.map((perm) => (
+                          <div
+                            key={perm.id}
+                            className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                              form.permissions.includes(perm.id)
+                                ? "bg-amber-500/10 border-amber-500/30"
+                                : "bg-slate-800/30 border-slate-700 hover:bg-slate-800"
+                            }`}
+                            onClick={() => togglePermission(perm.id)}
+                          >
+                            <Checkbox
+                              checked={form.permissions.includes(perm.id)}
+                              onCheckedChange={() => togglePermission(perm.id)}
+                              className="mt-0.5"
+                            />
+                            <div className="space-y-0.5 min-w-0">
+                              <p className="text-xs font-medium text-white">
+                                {perm.label}
+                              </p>
+                              <p className="text-[10px] text-slate-500 leading-tight">
+                                {perm.desc}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submit */}
+                  <Button
+                    type="submit"
+                    disabled={isPending}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold mt-4"
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating account…
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Create Account
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+            </form>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Edit Permissions Modal ───────────────────────────────────────────────────
+
+function EditPermissionsModal({
+  profile,
+  onClose,
+}: {
+  profile: ProfileWithEmail;
+  onClose: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>(profile.permissions || []);
+
+  const togglePermission = (permId: string) => {
+    setPermissions((prev) =>
+      prev.includes(permId)
+        ? prev.filter((p) => p !== permId)
+        : [...prev, permId]
+    );
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (permissions.length === 0) {
+      setError("Please select at least one permission for the admin role.");
+      return;
+    }
+    startTransition(async () => {
+      setError(null);
+      const res = await updateProfilePermissions(profile.id, permissions);
+      if (res.error) setError(res.error);
+      else onClose();
+    });
+  };
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="relative w-full max-w-sm rounded-2xl border border-slate-700/80 bg-slate-900 shadow-2xl shadow-black/60 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800">
+            <div>
+              <h2 className="text-base font-bold text-white">Edit Permissions</h2>
+              <p className="text-xs text-slate-500">
+                {profile.full_name || profile.id.substring(0, 8)}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
+                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                <p className="text-sm text-red-300">{error}</p>
+              </div>
             )}
+
+            <div className="space-y-3">
+              {PERMISSIONS_META.map((perm) => (
+                <div
+                  key={perm.id}
+                  className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    permissions.includes(perm.id)
+                      ? "bg-amber-500/10 border-amber-500/30"
+                      : "bg-slate-800/30 border-slate-700 hover:bg-slate-800"
+                  }`}
+                  onClick={() => togglePermission(perm.id)}
+                >
+                  <Checkbox
+                    checked={permissions.includes(perm.id)}
+                    onCheckedChange={() => togglePermission(perm.id)}
+                    className="mt-0.5"
+                  />
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="text-sm font-medium text-white">{perm.label}</p>
+                    <p className="text-xs text-slate-500">{perm.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-slate-700 hover:bg-slate-800"
+                onClick={onClose}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold"
+              >
+                {isPending ? "Saving…" : "Save Changes"}
+              </Button>
+            </div>
           </form>
         </div>
       </div>
@@ -267,6 +442,7 @@ export function AccountsClient({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingPermissions, setEditingPermissions] = useState<ProfileWithEmail | null>(null);
 
   const handleToggleActive = (profileId: string, currentStatus: boolean) => {
     startTransition(async () => {
@@ -289,6 +465,14 @@ export function AccountsClient({
       {/* Create modal */}
       {showCreate && (
         <CreateStaffModal onClose={() => setShowCreate(false)} />
+      )}
+
+      {/* Permissions modal */}
+      {editingPermissions && (
+        <EditPermissionsModal
+          profile={editingPermissions}
+          onClose={() => setEditingPermissions(null)}
+        />
       )}
 
       {/* Error banner */}
@@ -392,47 +576,61 @@ export function AccountsClient({
                           <span className="text-xs">{roleMeta.label}</span>
                         </div>
                       ) : (
-                        <Select
-                          value={profile.role}
-                          onValueChange={(val) =>
-                            handleRoleChange(profile.id, val as UserRole)
-                          }
-                          disabled={isPending || isMe}
-                        >
-                          <SelectTrigger className="w-[160px] h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-200">
-                            <SelectValue>
-                              <span
-                                className={`flex items-center gap-1.5 ${ROLE_META[profile.role as UserRole].color}`}
-                              >
-                                {ROLE_META[profile.role as UserRole].icon}
-                                {ROLE_META[profile.role as UserRole].label}
-                              </span>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-700">
-                            {(
-                              Object.entries(ROLE_META) as [
-                                UserRole,
-                                (typeof ROLE_META)[UserRole]
-                              ][]
-                            )
-                              .filter(([role]) => role !== "super_admin")
-                              .map(([role, meta]) => (
-                              <SelectItem
-                                key={role}
-                                value={role}
-                                className="text-white hover:bg-slate-700"
-                              >
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={profile.role}
+                            onValueChange={(val) =>
+                              handleRoleChange(profile.id, val as UserRole)
+                            }
+                            disabled={isPending || isMe}
+                          >
+                            <SelectTrigger className="w-[160px] h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-200">
+                              <SelectValue>
                                 <span
-                                  className={`flex items-center gap-1.5 ${meta.color}`}
+                                  className={`flex items-center gap-1.5 ${ROLE_META[profile.role as UserRole].color}`}
                                 >
-                                  {meta.icon}
-                                  {meta.label}
+                                  {ROLE_META[profile.role as UserRole].icon}
+                                  {ROLE_META[profile.role as UserRole].label}
                                 </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700">
+                              {(
+                                Object.entries(ROLE_META) as [
+                                  UserRole,
+                                  (typeof ROLE_META)[UserRole]
+                                ][]
+                              )
+                                .filter(([role]) => role !== "super_admin")
+                                .map(([role, meta]) => (
+                                <SelectItem
+                                  key={role}
+                                  value={role}
+                                  className="text-white hover:bg-slate-700"
+                                >
+                                  <span
+                                    className={`flex items-center gap-1.5 ${meta.color}`}
+                                  >
+                                    {meta.icon}
+                                    {meta.label}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {profile.role === "admin" && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 bg-slate-800/50 border-slate-700 text-slate-400 hover:text-white"
+                              onClick={() => setEditingPermissions(profile)}
+                              title="Edit Permissions"
+                            >
+                              <Settings2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </TableCell>
 

@@ -11,7 +11,7 @@ import { createHmac } from "crypto";
  * Uses the service role key as the HMAC secret — only ever available server-side.
  */
 export function signSeat(audiId: string, seat: string): string {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const key = process.env.QR_HMAC_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   return createHmac("sha256", key)
     .update(`${audiId}:${seat}`)
     .digest("base64url")

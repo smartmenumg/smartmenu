@@ -9,7 +9,17 @@ export const metadata = {
 
 export default async function CategoriesPage() {
   const session = await getCurrentProfile();
-  if (!session || !["menu", "super_admin"].includes(session.profile.role)) {
+  if (!session) {
+    redirect("/auth/unauthorized");
+  }
+
+  const { role, permissions } = session.profile;
+  const hasAccess = 
+    role === "super_admin" || 
+    role === "menu" ||
+    (role === "admin" && permissions?.includes("menu"));
+
+  if (!hasAccess) {
     redirect("/auth/unauthorized");
   }
 

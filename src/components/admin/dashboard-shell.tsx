@@ -27,6 +27,7 @@ interface NavItem {
   href: string;
   icon: React.ReactNode;
   roles: UserRole[];
+  perm: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -35,42 +36,49 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/admin",
     icon: <ClipboardList className="w-4 h-4" />,
     roles: ["admin", "super_admin"],
+    perm: "live_orders",
   },
   {
     label: "Products",
     href: "/dashboard/menu/products",
     icon: <Package className="w-4 h-4" />,
     roles: ["menu", "super_admin"],
+    perm: "menu", // admin needs menu perm to see it, though roles also dictate it. Wait, the original roles says `menu` and `super_admin`. Let's allow `admin` as well here. 
   },
   {
     label: "Categories",
     href: "/dashboard/menu/categories",
     icon: <Tag className="w-4 h-4" />,
     roles: ["menu", "super_admin"],
+    perm: "menu",
   },
   {
     label: "Revenue",
     href: "/dashboard/super-admin/revenue",
     icon: <BarChart3 className="w-4 h-4" />,
     roles: ["super_admin"],
+    perm: "revenue",
   },
   {
     label: "Accounts",
     href: "/dashboard/super-admin/accounts",
     icon: <Users className="w-4 h-4" />,
     roles: ["super_admin"],
+    perm: "accounts",
   },
   {
     label: "Audit Logs",
     href: "/dashboard/super-admin/audit",
     icon: <ScrollText className="w-4 h-4" />,
     roles: ["super_admin"],
+    perm: "audit_logs",
   },
   {
     label: "QR Codes",
     href: "/dashboard/super-admin/qr-codes",
     icon: <QrCode className="w-4 h-4" />,
     roles: ["admin", "super_admin"],
+    perm: "qr_codes",
   },
 ];
 
@@ -87,7 +95,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
 };
 
 interface DashboardShellProps {
-  profile: { role: UserRole; full_name: string | null; theatre_id: string };
+  profile: { role: UserRole; full_name: string | null; theatre_id: string; permissions: string[] };
   user: User;
   children: React.ReactNode;
 }
@@ -96,7 +104,20 @@ export function DashboardShell({ profile, user, children }: DashboardShellProps)
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const visibleNav = NAV_ITEMS.filter((item) => item.roles.includes(profile.role));
+  const visibleNav = NAV_ITEMS.filter((item) => {
+    // Super admins see everything
+    if (profile.role === "super_admin") return true;
+    
+    // Menu managers see only menu items
+    if (profile.role === "menu") return item.perm === "menu";
+    
+    // Admins see items based on their granular permissions
+    if (profile.role === "admin") {
+      return profile.permissions.includes(item.perm);
+    }
+    
+    return false;
+  });
   const initial = (profile.full_name ?? user.email ?? "?")[0].toUpperCase();
 
   const sidebar = (

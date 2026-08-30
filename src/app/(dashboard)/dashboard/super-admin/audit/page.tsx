@@ -22,8 +22,17 @@ export const metadata: Metadata = {
 export default async function AuditPage() {
   const session = await getCurrentProfile();
   
-  if (!session || session.profile.role !== "super_admin") {
-    redirect("/dashboard/admin");
+  if (!session) {
+    redirect("/auth/unauthorized");
+  }
+
+  const { role, permissions } = session.profile;
+  const hasAccess = 
+    role === "super_admin" || 
+    (role === "admin" && permissions?.includes("audit_logs"));
+
+  if (!hasAccess) {
+    redirect("/auth/unauthorized");
   }
 
   const logs = await getAuditLogs();
