@@ -85,7 +85,7 @@ export async function updateProfileRole(profileId: string, newRole: UserRole) {
   }
 
   // Prevent self-demotion
-  if (profileId === session.user.id && newRole !== "super_admin") {
+  if (profileId === session.user.id) {
     return { error: "You cannot demote your own super admin role" };
   }
 
