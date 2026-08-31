@@ -15,7 +15,7 @@ const ROUTE_ROLE_MAP: Array<{ prefix: string; roles: UserRole[] }> = [
 /** Public routes — never redirect */
 const PUBLIC_PREFIXES = ["/order", "/track", "/my-orders", "/auth", "/api", "/_next", "/favicon"];
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Always allow public paths
