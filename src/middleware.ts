@@ -41,8 +41,22 @@ export async function middleware(request: NextRequest) {
   // Check role for dashboard routes
   const routeRule = ROUTE_ROLE_MAP.find((r) => pathname.startsWith(r.prefix));
   if (routeRule) {
-    const role = await getUserRole(request, user.id);
-    if (!role || !routeRule.roles.includes(role)) {
+    const profile = await getUserProfile(request, user.id);
+    if (!profile) {
+      return NextResponse.redirect(new URL("/auth/unauthorized", request.url));
+    }
+
+    const { role, permissions } = profile;
+    const isRoleAllowed = routeRule.roles.includes(role);
+    
+    // Check if admin has specific permission for this module
+    // e.g. "/dashboard/super-admin/revenue" -> ["dashboard", "super-admin", "revenue"]
+    const segments = pathname.split("/").filter(Boolean);
+    const hasPermission = role === "admin" && permissions.some(p => 
+      segments.includes(p) || segments.includes(p.replace(/_/g, "-"))
+    );
+
+    if (!isRoleAllowed && !hasPermission) {
       return NextResponse.redirect(new URL("/auth/unauthorized", request.url));
     }
   }
@@ -56,11 +70,11 @@ async function refreshSession(request: NextRequest) {
   return supabaseResponse;
 }
 
-/** Fetch user role from profiles table using the middleware client */
-async function getUserRole(
+/** Fetch user profile (role + permissions) from profiles table using the middleware client */
+async function getUserProfile(
   request: NextRequest,
   userId: string
-): Promise<UserRole | null> {
+): Promise<{ role: UserRole; permissions: string[] } | null> {
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -74,12 +88,12 @@ async function getUserRole(
 
   const { data } = await supabase
     .from("profiles")
-    .select("role, active")
+    .select("role, active, permissions")
     .eq("id", userId)
-    .single<Pick<Profile, "role" | "active">>();
+    .single<Pick<Profile, "role" | "active" | "permissions">>();
 
   if (!data || !data.active) return null;
-  return data.role;
+  return { role: data.role, permissions: data.permissions || [] };
 }
 
 export const config = {
