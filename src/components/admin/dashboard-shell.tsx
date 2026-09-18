@@ -42,35 +42,35 @@ const NAV_ITEMS: NavItem[] = [
     label: "Products",
     href: "/dashboard/menu/products",
     icon: <Package className="w-4 h-4" />,
-    roles: ["menu", "super_admin"],
-    perm: "menu", // admin needs menu perm to see it, though roles also dictate it. Wait, the original roles says `menu` and `super_admin`. Let's allow `admin` as well here. 
+    roles: ["menu", "admin", "super_admin"],
+    perm: "menu",
   },
   {
     label: "Categories",
     href: "/dashboard/menu/categories",
     icon: <Tag className="w-4 h-4" />,
-    roles: ["menu", "super_admin"],
+    roles: ["menu", "admin", "super_admin"],
     perm: "menu",
   },
   {
     label: "Revenue",
     href: "/dashboard/super-admin/revenue",
     icon: <BarChart3 className="w-4 h-4" />,
-    roles: ["super_admin"],
+    roles: ["admin", "super_admin"],
     perm: "revenue",
   },
   {
     label: "Accounts",
     href: "/dashboard/super-admin/accounts",
     icon: <Users className="w-4 h-4" />,
-    roles: ["super_admin"],
+    roles: ["admin", "super_admin"],
     perm: "accounts",
   },
   {
     label: "Audit Logs",
     href: "/dashboard/super-admin/audit",
     icon: <ScrollText className="w-4 h-4" />,
-    roles: ["super_admin"],
+    roles: ["admin", "super_admin"],
     perm: "audit_logs",
   },
   {
@@ -81,6 +81,7 @@ const NAV_ITEMS: NavItem[] = [
     perm: "qr_codes",
   },
 ];
+
 
 const ROLE_LABELS: Record<UserRole, string> = {
   menu: "Menu Manager",

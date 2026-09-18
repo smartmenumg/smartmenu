@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { PublicCategory, PublicProduct, PublicAuditorium, PublicCustomization } from "@/lib/menu/public-menu";
@@ -45,6 +45,18 @@ export function MenuClient({ theatreName, categories, products, auditoriums, qrA
     seatNumber: qrSeat ?? "",
   });
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Sync QR data to form if the user navigates via a new QR scan 
+  // while the component is already mounted (e.g. soft navigation)
+  useEffect(() => {
+    if (isQrScan && validQrAudi && qrSeat) {
+      setFormData((prev) => ({
+        ...prev,
+        auditoriumId: validQrAudi.id,
+        seatNumber: qrSeat,
+      }));
+    }
+  }, [isQrScan, validQrAudi, qrSeat]);
 
   // Filter products by active category
   const filteredProducts =

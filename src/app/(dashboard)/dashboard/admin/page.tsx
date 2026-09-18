@@ -9,7 +9,7 @@ export const revalidate = 0;
 export default async function AdminDashboardPage() {
   const session = await getCurrentProfile();
   if (!session) {
-    redirect("/auth/unauthorized");
+    redirect("/auth/login");
   }
 
   const { role, permissions } = session.profile;

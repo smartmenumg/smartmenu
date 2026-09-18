@@ -10,7 +10,7 @@ export const metadata = {
 export default async function CategoriesPage() {
   const session = await getCurrentProfile();
   if (!session) {
-    redirect("/auth/unauthorized");
+    redirect("/auth/login");
   }
 
   const { role, permissions } = session.profile;

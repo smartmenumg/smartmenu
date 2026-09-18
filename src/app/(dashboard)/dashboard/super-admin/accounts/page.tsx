@@ -13,7 +13,7 @@ export default async function AccountsPage() {
   const session = await getCurrentProfile();
   
   if (!session) {
-    redirect("/auth/unauthorized");
+    redirect("/auth/login");
   }
 
   const { role, permissions } = session.profile;

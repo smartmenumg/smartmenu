@@ -11,7 +11,7 @@ export const metadata = {
 export default async function ProductsPage() {
   const session = await getCurrentProfile();
   if (!session) {
-    redirect("/auth/unauthorized");
+    redirect("/auth/login");
   }
 
   const { role, permissions } = session.profile;
