@@ -220,7 +220,7 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
                         type={showPass ? "text" : "password"}
                         value={form.password}
                         onChange={set("password")}
-                        placeholder="Min 12 chars, mixed case + symbol"
+                        placeholder="Enter password (min 6 characters)"
                         className="bg-slate-800/70 border-slate-700 text-white placeholder:text-slate-600 focus:border-amber-500/50 pr-10"
                       />
                       <button
@@ -236,8 +236,7 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
                       </button>
                     </div>
                     <p className="text-[11px] text-slate-600">
-                      Must be at least 12 characters with uppercase, lowercase,
-                      number &amp; symbol.
+                      Minimum 6 characters. Any characters are accepted.
                     </p>
                   </div>
 

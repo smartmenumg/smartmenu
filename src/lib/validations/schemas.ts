@@ -4,8 +4,9 @@ import { z } from "zod";
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(1, "Password is required"),
 });
+
 
 // ─── Customer Details ───────────────────────────────────────────────────────────
 
@@ -148,14 +149,11 @@ export const createUserSchema = z.object({
   email: z.string().email(),
   password: z
     .string()
-    .min(12, "Password must be at least 12 characters")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d])/,
-      "Password must contain uppercase, lowercase, number, and special character"
-    ),
+    .min(6, "Password must be at least 6 characters"),
   role: z.enum(["menu", "admin"]),
   full_name: z.string().min(2).max(100),
 });
+
 
 // ─── Types inferred from schemas ────────────────────────────────────────────────
 
