@@ -631,7 +631,7 @@ CREATE POLICY "product_images_public_read" ON storage.objects
 INSERT INTO public.theatres (id, name, slug, address, settings, active)
 VALUES (
   'a0000000-0000-0000-0000-000000000001',
-  'Cineplex Theatre',
+  'L.V Cinemas',
   'cineplex',
   'Main Street, City',
   '{"currency": "INR", "timezone": "Asia/Kolkata"}',

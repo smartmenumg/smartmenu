@@ -4,6 +4,12 @@ import { getCurrentProfile } from "@/lib/auth/actions";
 import { getAuditLogs } from "@/lib/admin/audit-actions";
 import type { AuditLogWithUser } from "@/lib/admin/audit-actions";
 import { format } from "date-fns";
+
+/** Convert a UTC ISO string / Date to an IST-shifted Date for display (UTC+5:30). */
+function toIST(utcValue: string | Date): Date {
+  const ms = typeof utcValue === "string" ? new Date(utcValue).getTime() : utcValue.getTime();
+  return new Date(ms + 5.5 * 60 * 60 * 1000);
+}
 import { ScrollText, CheckCircle2, XCircle, User, ShoppingBag, FileText, Image, Moon, Sun } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -239,7 +245,7 @@ export default async function AuditPage() {
                       {detail && <span className="text-slate-500 font-normal ml-1">{detail}</span>}
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      {format(new Date(log.created_at), "dd MMM yyyy, h:mm a")}
+                      {format(toIST(log.created_at), "dd MMM yyyy, h:mm a")} IST
                     </p>
                   </div>
                 </div>

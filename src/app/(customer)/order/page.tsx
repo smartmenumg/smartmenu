@@ -3,7 +3,7 @@ import { getActiveTheatre, getPublicMenu } from "@/lib/menu/public-menu";
 import { verifySeatSignature } from "@/lib/admin/qr-utils";
 import { getDayEndState } from "@/lib/admin/day-end-actions";
 import { MenuClient } from "./menu-client";
-import { UtensilsCrossed, Moon } from "lucide-react";
+import { UtensilsCrossed, Coffee } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Order Food | Theatre Food",
@@ -35,19 +35,26 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
   const dayEndState = await getDayEndState(theatre.id);
   if (dayEndState.isDayEnded) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
-        <div className="text-center space-y-4 p-8 max-w-sm">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
+        <div className="text-center space-y-5 p-8 max-w-xs">
           <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto">
-            <Moon className="w-8 h-8 text-slate-400" />
+            <Coffee className="w-7 h-7 text-amber-400" />
           </div>
-          <h1 className="text-xl font-bold text-white">{theatre.name}</h1>
-          <p className="text-slate-300 font-medium">Kitchen is closed for today</p>
-          <p className="text-slate-500 text-sm">
-            Orders will resume at <span className="text-slate-300 font-semibold">6:00 AM</span> tomorrow.
-            Thank you for visiting!
+
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold text-white">{theatre.name}</h1>
+            <p className="text-amber-400 font-semibold text-base">
+              Oops!
+            </p>
+          </div>
+
+          <p className="text-slate-400 text-sm leading-relaxed">
+            We are having too many orders right now.<br />
+            We&apos;ll be ready to serve you again very soon.
           </p>
-          <div className="mt-6 text-xs text-slate-600">
-            In-show purchases are currently unavailable.
+
+          <div className="border-t border-slate-800 pt-4 text-xs text-slate-600">
+            Thank you for your patience.
           </div>
         </div>
       </div>

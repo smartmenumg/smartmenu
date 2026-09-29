@@ -66,7 +66,7 @@ export async function getOrderHistory(
     .select("*, auditoriums(id,name), order_items(*), payments!inner(*)")
     .eq("theatre_id", theatre_id)
     .eq("payments.status", "paid")
-    .not("status", "eq", "cancelled")
+    // .not("status", "eq", "cancelled")
     .gte("created_at", startUTC.toISOString())
     .lte("created_at", endUTC.toISOString())
     .order("created_at", { ascending: false });
@@ -82,20 +82,22 @@ export async function getOrderHistory(
   const groupByMonth = diffDays > 31;
 
   for (const o of rows) {
-    totalOrders++;
-    totalRevenue += o.total_amount;
-    totalGst += o.gst_amount ?? 0;
-    const ist = new Date(new Date(o.created_at).getTime() + IST_MS);
-    
-    let key: string;
-    if (groupByMonth) {
-      key = `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}`;
-    } else {
-      key = `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}-${String(ist.getUTCDate()).padStart(2, "0")}`;
+    if (o.status !== "cancelled") {
+      totalOrders++;
+      totalRevenue += o.total_amount;
+      totalGst += o.gst_amount ?? 0;
+      const ist = new Date(new Date(o.created_at).getTime() + IST_MS);
+      
+      let key: string;
+      if (groupByMonth) {
+        key = `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}`;
+      } else {
+        key = `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}-${String(ist.getUTCDate()).padStart(2, "0")}`;
+      }
+      
+      const ex = dayMap.get(key) ?? { orders: 0, revenue: 0, subtotal: 0 };
+      dayMap.set(key, { orders: ex.orders + 1, revenue: ex.revenue + o.total_amount, subtotal: ex.subtotal + (o.subtotal_amount ?? 0) });
     }
-    
-    const ex = dayMap.get(key) ?? { orders: 0, revenue: 0, subtotal: 0 };
-    dayMap.set(key, { orders: ex.orders + 1, revenue: ex.revenue + o.total_amount, subtotal: ex.subtotal + (o.subtotal_amount ?? 0) });
   }
 
   const totalSubtotal = totalRevenue - totalGst;

@@ -28,7 +28,7 @@ export async function getAdminOrders(): Promise<OrderWithDetails[]> {
       payments ( * )
     `)
     .eq("theatre_id", session.profile.theatre_id)
-    .not("status", "in", "(pending_payment,cancelled)")
+    .neq("status", "pending_payment")
     .gte("created_at", dayStartUTC.toISOString())
     .order("created_at", { ascending: false })
     .limit(200);
