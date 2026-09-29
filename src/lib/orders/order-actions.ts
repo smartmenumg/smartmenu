@@ -59,14 +59,47 @@ export async function updateOrderStatus(
 
   const admin = await createAdminClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (admin as any)
-    .from("orders")
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq("id", orderId)
-    .eq("theatre_id", session.profile.theatre_id);
+  // The database trigger enforces strict linear status transitions (accepted -> preparing -> ready -> delivered).
+  // Since the UI now skips directly from accepted to delivered, we need to walk the order through the intermediate states.
+  if (newStatus === "delivered") {
+    // 1. Fetch current status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: order } = await (admin as any).from("orders").select("status").eq("id", orderId).single();
+    const currentStatus = order?.status;
 
-  if (error) return { error: error.message };
+    const sequence = [];
+    if (currentStatus === "accepted") sequence.push("preparing", "ready", "delivered");
+    else if (currentStatus === "preparing") sequence.push("ready", "delivered");
+    else if (currentStatus === "ready") sequence.push("delivered");
+    else sequence.push("delivered"); // fallback
+
+    for (const s of sequence) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (admin as any)
+        .from("orders")
+        .update({ status: s, updated_at: new Date().toISOString() })
+        .eq("id", orderId)
+        .eq("theatre_id", session.profile.theatre_id);
+      
+      if (error) {
+        console.error(`Supabase update error (status ${s}):`, error);
+        return { error: error.message };
+      }
+    }
+  } else {
+    // Standard direct update
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (admin as any)
+      .from("orders")
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq("id", orderId)
+      .eq("theatre_id", session.profile.theatre_id);
+
+    if (error) {
+      console.error("Supabase update error:", error);
+      return { error: error.message };
+    }
+  }
 
   revalidatePath("/dashboard/admin");
   return {};

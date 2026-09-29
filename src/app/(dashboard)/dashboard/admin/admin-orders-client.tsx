@@ -272,8 +272,12 @@ export function AdminOrdersClient({
 
   const handleStatusUpdate = useCallback(async (id: string, status: OrderStatus) => {
     const { error } = await updateOrderStatus(id, status);
-    if (!error) setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updated_at: new Date().toISOString() } : o));
-    else alert("Failed to update order status. Please refresh.");
+    if (!error) {
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updated_at: new Date().toISOString() } : o));
+    } else {
+      console.error("Status update error:", error);
+      alert(`Failed to update order status: ${error}`);
+    }
   }, []);
 
   const handleDayEnd = () => {
