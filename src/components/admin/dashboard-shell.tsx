@@ -83,7 +83,7 @@ const NAV_ITEMS: NavItem[] = [
 
 interface DashboardShellProps {
   profile: { role: UserRole; full_name: string | null; theatre_id: string; permissions: string[] };
-  
+  user?: { id?: string; email?: string };
   children: React.ReactNode;
 }
 

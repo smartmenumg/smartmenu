@@ -114,8 +114,15 @@ export async function createStaffUser(params: {
     return { error: createError?.message ?? "Failed to create user." };
   }
 
-  // Create profile
-  const profilePayload: Record<string, unknown> = {
+  type ProfileInsert = {
+    id: string;
+    theatre_id: string;
+    role: string;
+    full_name: string;
+    active: boolean;
+    permissions?: string[];
+  };
+  const profilePayload: ProfileInsert = {
     id: newUser.user.id,
     theatre_id: params.theatreId,
     role: params.role,
@@ -127,7 +134,8 @@ export async function createStaffUser(params: {
     profilePayload.permissions = params.permissions;
   }
 
-  const { error: profileError } = await adminClient.from("profiles").insert(profilePayload);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: profileError } = await adminClient.from("profiles").insert(profilePayload as any);
 
   if (profileError) {
     // Rollback: delete the auth user
