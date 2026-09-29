@@ -237,7 +237,29 @@ export function AdminOrdersClient({
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: updatedAt } : o));
   }, []);
 
-  useRealtimeOrders({ theatreId, onNewOrder: handleNewOrder, onStatusUpdate: handleRealtimeUpdate, pollFn: getAdminOrders, onPollResult: setOrders, pollIntervalMs: 12000 });
+  // Merge poll results: use server data as base, but keep any local status that is
+  // more advanced than what the server returned (handles propagation lag).
+  const STATUS_RANK: Record<string, number> = {
+    confirmed: 1, accepted: 2, preparing: 3, ready: 4, delivered: 5, cancelled: 6, pending_payment: 0,
+  };
+  const mergePollOrders = useCallback((fresh: OrderWithDetails[]) => {
+    setOrders(prev => {
+      const prevMap = new Map(prev.map(o => [o.id, o]));
+      const merged = fresh.map(o => {
+        const existing = prevMap.get(o.id);
+        if (existing && (STATUS_RANK[existing.status] ?? 0) > (STATUS_RANK[o.status] ?? 0)) {
+          return { ...o, status: existing.status };
+        }
+        return o;
+      });
+      // Keep any locally-known orders not yet in the fresh list (brief propagation window)
+      const freshIds = new Set(fresh.map(o => o.id));
+      const local = prev.filter(o => !freshIds.has(o.id));
+      return [...merged, ...local];
+    });
+  }, []);
+
+  useRealtimeOrders({ theatreId, onNewOrder: handleNewOrder, onStatusUpdate: handleRealtimeUpdate, pollFn: getAdminOrders, onPollResult: mergePollOrders, pollIntervalMs: 12000 });
 
   useEffect(() => {
     const t = setTimeout(() => setConnected(true), 1500);
@@ -251,6 +273,7 @@ export function AdminOrdersClient({
   const handleStatusUpdate = useCallback(async (id: string, status: OrderStatus) => {
     const { error } = await updateOrderStatus(id, status);
     if (!error) setOrders(prev => prev.map(o => o.id === id ? { ...o, status, updated_at: new Date().toISOString() } : o));
+    else alert("Failed to update order status. Please refresh.");
   }, []);
 
   const handleDayEnd = () => {

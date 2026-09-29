@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRealtimeOrder } from "@/hooks/use-realtime-orders";
 import { formatPrice, shortOrderId } from "@/lib/utils";
 import {
-  CheckCircle2, Clock, ChefHat, Truck, XCircle,
+  CheckCircle2, Clock, XCircle,
   MapPin, UtensilsCrossed, ArrowLeft, Package,
 } from "lucide-react";
 import type { OrderStatus } from "@/types/database";
@@ -36,14 +36,12 @@ interface TrackingOrder {
 }
 
 const STATUS_STEPS: { key: OrderStatus; label: string; sublabel: string; icon: React.ReactNode }[] = [
-  { key: "confirmed",  label: "Order Confirmed",       sublabel: "Payment received",           icon: <CheckCircle2 className="w-5 h-5" /> },
-  { key: "accepted",   label: "Order Accepted",         sublabel: "Staff is preparing your ticket", icon: <Package className="w-5 h-5" /> },
-  { key: "preparing",  label: "Being Prepared",         sublabel: "Kitchen is on it!",          icon: <ChefHat className="w-5 h-5" /> },
-  { key: "ready",      label: "Ready for Delivery",     sublabel: "Out for delivery to your seat", icon: <Truck className="w-5 h-5" /> },
-  { key: "delivered",  label: "Delivered!",             sublabel: "Enjoy your meal 🎬",         icon: <CheckCircle2 className="w-5 h-5" /> },
+  { key: "confirmed",  label: "Order Confirmed",  sublabel: "Payment received — we've got your order!",  icon: <CheckCircle2 className="w-5 h-5" /> },
+  { key: "accepted",   label: "Order Accepted",   sublabel: "Staff has accepted and is on the way!",      icon: <Package className="w-5 h-5" /> },
+  { key: "delivered",  label: "Delivered!",        sublabel: "Enjoy your meal 🎬",                        icon: <CheckCircle2 className="w-5 h-5" /> },
 ];
 
-const STATUS_ORDER: OrderStatus[] = ["confirmed", "accepted", "preparing", "ready", "delivered"];
+const STATUS_ORDER: OrderStatus[] = ["confirmed", "accepted", "delivered"];
 
 function getStepState(stepKey: OrderStatus, currentStatus: OrderStatus): "done" | "active" | "upcoming" {
   if (currentStatus === "cancelled") return "upcoming";
