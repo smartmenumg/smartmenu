@@ -4,13 +4,20 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
 import { revalidatePath } from "next/cache";
 import type { OrderStatus, OrderWithDetails } from "@/types/database";
+import { getTodayDayStartUTC } from "@/lib/utils/ist-date";
 
-/** Fetch all orders for the current admin's theatre */
+/**
+ * Fetch today's orders for the current admin's theatre.
+ * "Today" = from 06:00 IST today until now (cinema business day boundary).
+ */
 export async function getAdminOrders(): Promise<OrderWithDetails[]> {
   const session = await getCurrentProfile();
   if (!session) return [];
 
   const admin = await createAdminClient();
+
+  // Business day starts at 06:00 IST — filter to today's orders only
+  const dayStartUTC = getTodayDayStartUTC();
 
   const { data, error } = await admin
     .from("orders")
@@ -22,8 +29,9 @@ export async function getAdminOrders(): Promise<OrderWithDetails[]> {
     `)
     .eq("theatre_id", session.profile.theatre_id)
     .not("status", "in", "(pending_payment,cancelled)")
+    .gte("created_at", dayStartUTC.toISOString())
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(200);
 
   if (error) {
     console.error("getAdminOrders error:", error);
@@ -41,6 +49,12 @@ export async function updateOrderStatus(
   const session = await getCurrentProfile();
   if (!session || !["admin", "super_admin"].includes(session.profile.role)) {
     return { error: "Unauthorized" };
+  }
+
+  // Guard: only allow transitions to accepted or delivered from the admin UI
+  const allowedStatuses: OrderStatus[] = ["accepted", "delivered", "cancelled"];
+  if (!allowedStatuses.includes(newStatus)) {
+    return { error: "Invalid status transition" };
   }
 
   const admin = await createAdminClient();

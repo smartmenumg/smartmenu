@@ -128,6 +128,10 @@ export interface Theatre {
   address: string | null;
   settings: Record<string, unknown>;
   active: boolean;
+  /** Timestamp when admin triggered "Day End". NULL = day is active. */
+  day_ended_at: string | null;
+  /** Auth user id of the admin who triggered day end. */
+  day_ended_by: string | null;
   created_at: string;
   updated_at: string;
 }

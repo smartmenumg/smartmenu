@@ -19,7 +19,6 @@ import {
   Printer,
   Save,
   QrCode,
-  GripVertical,
   AlertCircle,
   CheckCircle2,
   Loader2,
@@ -168,10 +167,10 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
       <div className="print:hidden max-w-7xl mx-auto p-6 md:p-10 space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-display font-bold tracking-tight text-white mb-2">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">
             QR Code Manager
           </h1>
-          <p className="text-slate-400">
+          <p className="text-slate-500 text-sm">
             Configure seat layouts and generate print-ready QR codes for every seat.
           </p>
         </div>
@@ -192,24 +191,24 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
                   selectedAudiId === a.id
                     ? "bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/40"
-                    : "bg-slate-900/50 border-slate-800 hover:bg-slate-800/80"
+                    : "bg-white border-slate-200 hover:bg-slate-50"
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`font-bold ${selectedAudiId === a.id ? "text-amber-400" : "text-white"}`}>
+                  <span className={`font-bold ${selectedAudiId === a.id ? "text-amber-600" : "text-slate-800"}`}>
                     {a.name}
                   </span>
                   {isConfigured ? (
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
                       Ready
                     </span>
                   ) : (
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200">
                       Empty
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-500">
                   {isConfigured ? `${numRows} rows · ${totalSeatsInAudi} seats` : "No layout set"}
                 </p>
               </div>
@@ -218,20 +217,20 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
         </div>
 
         {/* Base URL field */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Link2 className="w-4 h-4 text-slate-500" />
-            <Label className="text-sm text-slate-300 font-medium">Menu URL</Label>
+            <Label className="text-sm text-slate-600 font-medium">Menu URL</Label>
             <span className="text-xs text-slate-600">(used in QR codes — must be reachable by customers&apos; phones)</span>
           </div>
           <Input
             value={customBaseUrl}
             onChange={(e) => setCustomBaseUrl(e.target.value.replace(/\/$/, ""))}
             placeholder="https://your-app.vercel.app"
-            className="bg-slate-800/80 border-slate-700 text-white font-mono text-sm"
+            className="bg-slate-50 border-slate-200 text-slate-800 font-mono text-sm"
           />
           {isLocalhost && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs">
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <p>
                 <strong>Localhost detected.</strong> QR codes pointing to localhost only work on the same device.
@@ -246,16 +245,16 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Label className="text-slate-400 text-sm shrink-0">Auditorium</Label>
+                <Label className="text-slate-600 text-sm shrink-0">Auditorium</Label>
                 <Select value={selectedAudiId} onValueChange={(v) => v && setSelectedAudiId(v)}>
-                  <SelectTrigger className="w-[180px] bg-slate-900/60 border-slate-700 text-white h-8 text-sm">
+                  <SelectTrigger className="w-[180px] bg-white border-slate-200 text-slate-800 h-8 text-sm">
                     <SelectValue placeholder="Select auditorium">
                       {selectedAudi?.name ?? "Select auditorium"}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className="bg-slate-50 border-slate-200">
                     {auditoriums.map((a) => (
-                      <SelectItem key={a.id} value={a.id} className="text-white hover:bg-slate-700">
+                      <SelectItem key={a.id} value={a.id} className="text-slate-800 hover:bg-slate-100">
                         {a.name}
                       </SelectItem>
                     ))}
@@ -266,7 +265,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
                 variant="outline"
                 size="sm"
                 onClick={addRow}
-                className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 h-8"
+                className="border-amber-500/40 text-amber-600 hover:bg-amber-500/10 h-8"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Add Row
@@ -274,7 +273,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
             </div>
 
             {currentLayout.rows.length === 0 ? (
-              <div className="border-2 border-dashed border-slate-800 rounded-xl p-10 text-center">
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center">
                 <QrCode className="w-10 h-10 text-slate-700 mx-auto mb-3" />
                 <p className="text-slate-500 text-sm">No rows yet. Click &quot;Add Row&quot; to start.</p>
               </div>
@@ -289,28 +288,28 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
                 {currentLayout.rows.map((row, index) => (
                   <div
                     key={index}
-                    className="grid grid-cols-[72px_1fr_1fr_36px] gap-2 items-center bg-slate-900/50 border border-slate-800 rounded-lg p-2.5"
+                    className="grid grid-cols-[72px_1fr_1fr_36px] gap-2 items-center bg-white border border-slate-200 rounded-lg p-2.5"
                   >
                     <Input
                       value={row.name}
                       onChange={(e) => updateRow(index, "name", e.target.value.toUpperCase())}
                       placeholder="A"
                       maxLength={6}
-                      className="bg-slate-800/80 border-slate-700 text-white font-mono text-center h-8 text-sm"
+                      className="bg-slate-50 border-slate-200 text-slate-800 font-mono text-center h-8 text-sm"
                     />
                     <Input
                       type="number"
                       min={1}
                       value={row.from}
                       onChange={(e) => updateRow(index, "from", e.target.value)}
-                      className="bg-slate-800/80 border-slate-700 text-white h-8 text-sm"
+                      className="bg-slate-50 border-slate-200 text-slate-800 h-8 text-sm"
                     />
                     <Input
                       type="number"
                       min={row.from}
                       value={row.to}
                       onChange={(e) => updateRow(index, "to", e.target.value)}
-                      className="bg-slate-800/80 border-slate-700 text-white h-8 text-sm"
+                      className="bg-slate-50 border-slate-200 text-slate-800 h-8 text-sm"
                     />
                     <button
                       onClick={() => removeRow(index)}
@@ -347,18 +346,18 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
 
             {/* Summary */}
             {currentLayout.rows.length > 0 && (
-              <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4 space-y-1.5">
+              <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-1.5">
                 <p className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-3">Layout Summary</p>
                 {currentLayout.rows.map((row, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
-                    <span className="font-mono font-semibold text-amber-400 w-10">{row.name}</span>
+                    <span className="font-mono font-semibold text-amber-600 w-10">{row.name}</span>
                     <span className="text-slate-500">Seats {row.from}–{row.to}</span>
                     <span className="ml-auto text-slate-600 text-xs">{row.to - row.from + 1} seats</span>
                   </div>
                 ))}
-                <div className="border-t border-slate-800 pt-2 mt-2 flex justify-between text-sm">
+                <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between text-sm">
                   <span className="text-slate-500">Total</span>
-                  <span className="text-white font-semibold">{totalSeats} seats</span>
+                  <span className="text-slate-800 font-semibold">{totalSeats} seats</span>
                 </div>
               </div>
             )}
@@ -367,7 +366,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
           {/* ── Right: QR Preview ── */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white flex items-center gap-2">
+              <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
                 <QrCode className="w-4 h-4 text-slate-500" />
                 Preview — {totalSeats} codes
               </h2>
@@ -376,7 +375,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
                 disabled={totalSeats === 0 || isPrinting}
                 variant="outline"
                 size="sm"
-                className="border-slate-700 text-slate-300 hover:bg-slate-800 h-8"
+                className="border-slate-200 text-slate-600 hover:bg-slate-50 h-8"
               >
                 {isPrinting
                   ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
@@ -386,7 +385,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
             </div>
 
             {totalSeats === 0 ? (
-              <div className="border-2 border-dashed border-slate-800 rounded-xl p-10 text-center">
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center">
                 <p className="text-slate-500 text-sm">Configure rows on the left to see QR codes.</p>
               </div>
             ) : (

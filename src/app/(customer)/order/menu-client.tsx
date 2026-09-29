@@ -50,6 +50,7 @@ export function MenuClient({ theatreName, categories, products, auditoriums, qrA
   // while the component is already mounted (e.g. soft navigation)
   useEffect(() => {
     if (isQrScan && validQrAudi && qrSeat) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData((prev) => ({
         ...prev,
         auditoriumId: validQrAudi.id,

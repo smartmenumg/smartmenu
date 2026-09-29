@@ -115,7 +115,7 @@ export async function createStaffUser(params: {
   }
 
   // Create profile
-  const profilePayload: any = {
+  const profilePayload: Record<string, unknown> = {
     id: newUser.user.id,
     theatre_id: params.theatreId,
     role: params.role,
@@ -127,7 +127,6 @@ export async function createStaffUser(params: {
     profilePayload.permissions = params.permissions;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: profileError } = await adminClient.from("profiles").insert(profilePayload);
 
   if (profileError) {

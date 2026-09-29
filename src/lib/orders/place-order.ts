@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { createOrderSchema } from "@/lib/validations/schemas";
 import { randomUUID } from "crypto";
+import { getDayEndState } from "@/lib/admin/day-end-actions";
 
 export interface PlaceOrderInput {
   customerName: string;
@@ -84,6 +85,13 @@ export async function placeOrder(input: PlaceOrderInput): Promise<{ token?: stri
   }
 
   const theatreId = products[0].theatre_id;
+
+  // Server-side Day End guard — block order placement if day is ended
+  const dayEndState = await getDayEndState(theatreId);
+  if (dayEndState.isDayEnded) {
+    return { error: "Ordering is currently closed. Please visit again after 6:00 AM." };
+  }
+
   let subtotalAmount = 0;
   let totalGstAmount = 0;
 

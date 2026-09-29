@@ -19,7 +19,9 @@ type AuditAction =
   | "payment.verified"
   | "payment.webhook_received"
   | "image.uploaded"
-  | "account.updated";
+  | "account.updated"
+  | "day.ended"
+  | "day.started";
 
 interface LogAuditParams {
   userId: string | null;

@@ -30,10 +30,10 @@ export default async function AccountsPage() {
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-5xl mx-auto">
       <div>
-        <h1 className="text-3xl font-display font-bold tracking-tight text-white mb-2">
+        <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 mb-2">
           Accounts Management
         </h1>
-        <p className="text-slate-400">
+        <p className="text-slate-500">
           Manage staff access, roles, and suspend accounts.
         </p>
       </div>

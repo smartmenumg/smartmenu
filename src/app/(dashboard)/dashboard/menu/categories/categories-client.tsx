@@ -87,9 +87,9 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
   return (
     <div className="space-y-4">
       {error && (
-        <div className="flex items-start gap-2.5 rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3">
-          <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-red-300">{error}</p>
+        <div className="flex items-start gap-2.5 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+          <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
 
@@ -100,26 +100,26 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
         </Button>
       </div>
 
-      <div className="rounded-xl border border-slate-700/60 bg-slate-800/40 overflow-hidden">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <Table>
-          <TableHeader className="bg-slate-800/80">
-            <TableRow className="border-slate-700/60 hover:bg-transparent">
-              <TableHead className="text-slate-300 font-medium">Name</TableHead>
-              <TableHead className="text-slate-300 font-medium w-32 text-center">Display Order</TableHead>
-              <TableHead className="text-slate-300 font-medium w-24 text-right">Actions</TableHead>
+          <TableHeader className="bg-slate-50 border-b border-slate-200">
+            <TableRow className="border-slate-200 hover:bg-transparent">
+              <TableHead className="text-slate-600 font-medium">Name</TableHead>
+              <TableHead className="text-slate-600 font-medium w-32 text-center">Display Order</TableHead>
+              <TableHead className="text-slate-600 font-medium w-24 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {initialCategories.length === 0 ? (
-              <TableRow className="border-slate-700/60 hover:bg-slate-800/50">
+              <TableRow className="border-slate-200 hover:bg-slate-50">
                 <TableCell colSpan={3} className="h-24 text-center text-slate-500">
                   No categories found. Create one to get started.
                 </TableCell>
               </TableRow>
             ) : (
               initialCategories.map((category) => (
-                <TableRow key={category.id} className="border-slate-700/60 hover:bg-slate-800/50">
-                  <TableCell className="font-medium text-slate-200">{category.name}</TableCell>
+                <TableRow key={category.id} className="border-slate-200 hover:bg-slate-50">
+                  <TableCell className="font-medium text-slate-700">{category.name}</TableCell>
                   <TableCell className="text-center text-slate-400">{category.display_order}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -127,7 +127,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => handleOpenEdit(category)}
-                        className="text-slate-400 hover:text-amber-400 hover:bg-amber-400/10"
+                        className="text-slate-400 hover:text-amber-600 hover:bg-amber-400/10"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -150,7 +150,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
 
       {/* Create / Edit Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+        <DialogContent className="bg-white border-slate-200 text-slate-800 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingCategory ? "Edit Category" : "Add Category"}</DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -160,26 +160,26 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
           
           <form onSubmit={handleSubmit} className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-slate-200">Category Name</Label>
+              <Label htmlFor="name" className="text-slate-700">Category Name</Label>
               <Input
                 id="name"
                 name="name"
                 required
                 defaultValue={editingCategory?.name}
-                className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
+                className="bg-slate-50 border-slate-300 text-slate-800 placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
                 placeholder="e.g. Popcorn & Snacks"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="display_order" className="text-slate-200">Display Order</Label>
+              <Label htmlFor="display_order" className="text-slate-700">Display Order</Label>
               <Input
                 id="display_order"
                 name="display_order"
                 type="number"
                 min="0"
                 defaultValue={editingCategory?.display_order || ""}
-                className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
+                className="bg-slate-50 border-slate-300 text-slate-800 placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20"
                 placeholder="Leave blank to auto-append"
               />
             </div>
@@ -189,7 +189,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
                 type="button" 
                 variant="outline" 
                 onClick={() => setIsOpen(false)}
-                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                className="border-slate-200 text-slate-600 hover:bg-slate-50"
               >
                 Cancel
               </Button>
@@ -208,7 +208,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-md">
+        <DialogContent className="bg-white border-slate-200 text-slate-800 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Category</DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -221,7 +221,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
               type="button" 
               variant="outline" 
               onClick={() => setDeleteId(null)}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              className="border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               Cancel
             </Button>
@@ -229,7 +229,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: Cat
               type="button" 
               disabled={isPending}
               onClick={() => deleteId && handleDelete(deleteId)}
-              className="bg-red-500 hover:bg-red-600 text-white font-medium"
+              className="bg-red-500 hover:bg-red-600 text-slate-900 font-medium"
             >
               {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Delete

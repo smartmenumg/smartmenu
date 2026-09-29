@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { getActiveTheatre, getPublicMenu } from "@/lib/menu/public-menu";
 import { verifySeatSignature } from "@/lib/admin/qr-utils";
+import { getDayEndState } from "@/lib/admin/day-end-actions";
 import { MenuClient } from "./menu-client";
-import { UtensilsCrossed } from "lucide-react";
+import { UtensilsCrossed, Moon } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Order Food | Theatre Food",
@@ -19,20 +20,6 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
   const theatre = await getActiveTheatre();
   const params = await searchParams;
 
-  // QR scan pre-fill — only accepted if HMAC signature is valid.
-  // This prevents customers from tampering with the URL to change their seat.
-  const rawAudi = params.audi?.trim() ?? null;
-  const rawSeat = params.seat?.trim() ?? null;
-  const rawSig  = params.sig?.trim()  ?? null;
-
-  const sigValid = rawAudi && rawSeat && rawSig
-    ? verifySeatSignature(rawAudi, rawSeat, rawSig)
-    : false;
-
-  // Only pre-fill when the signature is cryptographically valid
-  const qrAudiId = sigValid ? rawAudi : null;
-  const qrSeat   = sigValid ? rawSeat : null;
-
   if (!theatre) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -43,6 +30,41 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
       </div>
     );
   }
+
+  // Check Day End state — if the admin has ended the day, block all orders
+  const dayEndState = await getDayEndState(theatre.id);
+  if (dayEndState.isDayEnded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <div className="text-center space-y-4 p-8 max-w-sm">
+          <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto">
+            <Moon className="w-8 h-8 text-slate-400" />
+          </div>
+          <h1 className="text-xl font-bold text-white">{theatre.name}</h1>
+          <p className="text-slate-300 font-medium">Kitchen is closed for today</p>
+          <p className="text-slate-500 text-sm">
+            Orders will resume at <span className="text-slate-300 font-semibold">6:00 AM</span> tomorrow.
+            Thank you for visiting!
+          </p>
+          <div className="mt-6 text-xs text-slate-600">
+            In-show purchases are currently unavailable.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // QR scan pre-fill — only accepted if HMAC signature is valid.
+  const rawAudi = params.audi?.trim() ?? null;
+  const rawSeat = params.seat?.trim() ?? null;
+  const rawSig  = params.sig?.trim()  ?? null;
+
+  const sigValid = rawAudi && rawSeat && rawSig
+    ? verifySeatSignature(rawAudi, rawSeat, rawSig)
+    : false;
+
+  const qrAudiId = sigValid ? rawAudi : null;
+  const qrSeat   = sigValid ? rawSeat : null;
 
   const { categories, products, auditoriums } = await getPublicMenu(theatre.id);
 

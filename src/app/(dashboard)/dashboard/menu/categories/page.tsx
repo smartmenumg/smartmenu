@@ -28,8 +28,8 @@ export default async function CategoriesPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Categories</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Categories</h1>
+        <p className="text-slate-500 text-sm mt-1">
           Manage product categories and their display order on the menu.
         </p>
       </div>
