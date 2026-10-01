@@ -26,12 +26,19 @@ import {
 } from "lucide-react";
 
 interface QRManagerClientProps {
+  theatreId?: string;
+  theatreName?: string;
   auditoriums: AuditoriumWithLayout[];
   baseUrl: string;
   initialSignedUrls: Record<string, Record<string, string>>;
 }
 
-export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSignedUrls }: QRManagerClientProps) {
+export function QRManagerClient({
+  theatreName,
+  auditoriums,
+  baseUrl: serverBaseUrl,
+  initialSignedUrls,
+}: QRManagerClientProps) {
   const [selectedAudiId, setSelectedAudiId] = useState<string>(auditoriums[0]?.id ?? "");
   const [layouts, setLayouts] = useState<Record<string, SeatLayout>>(() => {
     const init: Record<string, SeatLayout> = {};
@@ -47,6 +54,22 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
   // Signed URLs — pre-generated server-side per audi
   const [signedUrls, setSignedUrls] = useState<Record<string, Record<string, string>>>(initialSignedUrls);
   const [isPrinting, setIsPrinting] = useState(false);
+
+  // Sync state if auditoriums or initialSignedUrls change (e.g. theatre switch)
+  useEffect(() => {
+    if (auditoriums && auditoriums.length > 0) {
+      setSelectedAudiId((prev) =>
+        auditoriums.some((a) => a.id === prev) ? prev : auditoriums[0].id
+      );
+      const init: Record<string, SeatLayout> = {};
+      for (const a of auditoriums) {
+        init[a.id] = a.seat_layout?.rows?.length > 0 ? a.seat_layout : { rows: [] };
+      }
+      setLayouts(init);
+      setSignedUrls(initialSignedUrls);
+      setSaveStatus("idle");
+    }
+  }, [auditoriums, initialSignedUrls]);
 
   // Editable base URL — defaults to server-detected, but admin can override
   // On first client render, use window.location.origin for accuracy
@@ -167,11 +190,18 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
       <div className="print:hidden max-w-7xl mx-auto p-6 md:p-10 space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-1">
-            QR Code Manager
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Configure seat layouts and generate print-ready QR codes for every seat.
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              QR Code Manager
+            </h1>
+            {theatreName && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-700 border border-amber-500/30">
+                {theatreName}
+              </span>
+            )}
+          </div>
+          <p className="text-slate-500 text-sm mt-1">
+            Configure seat layouts and generate print-ready QR codes for screens in {theatreName || "your theatre"}.
           </p>
         </div>
 
@@ -416,7 +446,7 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
       <div className="hidden print:block">
         <div style={{ padding: "8mm" }}>
           <h2 style={{ fontFamily: "sans-serif", fontSize: "14pt", marginBottom: "6mm", fontWeight: "bold" }}>
-            {selectedAudi?.name} — QR Codes
+            {theatreName ? `${theatreName} — ` : ""}{selectedAudi?.name} — QR Codes
           </h2>
           <div
             style={{
@@ -442,7 +472,9 @@ export function QRManagerClient({ auditoriums, baseUrl: serverBaseUrl, initialSi
               >
                 <QRCodeSVG value={getPrintUrl(seat)} size={100} level="H" includeMargin={false} />
                 <div style={{ textAlign: "center", fontFamily: "sans-serif", lineHeight: 1.2 }}>
-                  <div style={{ fontSize: "7pt", color: "#666" }}>{selectedAudi?.name}</div>
+                  <div style={{ fontSize: "7pt", color: "#666" }}>
+                    {theatreName ? `${theatreName} • ` : ""}{selectedAudi?.name}
+                  </div>
                   <div style={{ fontSize: "14pt", fontWeight: "900", color: "#111" }}>{seat}</div>
                 </div>
               </div>

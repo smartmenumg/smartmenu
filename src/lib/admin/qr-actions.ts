@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
 import { getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
@@ -88,16 +89,30 @@ export async function saveSeatLayout(
     if (row.to < row.from) return { error: `Row ${row.name}: end seat must be >= start seat.` };
   }
 
-  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
+  const admin = await createAdminClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (await createAdminClient() as any)
+  // Validate that the auditorium exists and check theatre ownership for non-super_admin
+  const { data: audi, error: fetchErr } = await (admin as any)
+    .from("auditoriums")
+    .select("id, theatre_id")
+    .eq("id", auditoriumId)
+    .single();
+
+  if (fetchErr || !audi) {
+    return { error: "Auditorium not found" };
+  }
+
+  if (session.profile.role !== "super_admin" && audi.theatre_id !== session.profile.theatre_id) {
+    return { error: "Unauthorized for this theatre" };
+  }
+
+  const { error } = await (admin as any)
     .from("auditoriums")
     .update({ seat_layout: layout })
-    .eq("id", auditoriumId)
-    .eq("theatre_id", effectiveTheatreId);
+    .eq("id", auditoriumId);
 
   if (error) return { error: error.message };
 
+  revalidatePath("/dashboard/super-admin/qr-codes");
   return {};
 }

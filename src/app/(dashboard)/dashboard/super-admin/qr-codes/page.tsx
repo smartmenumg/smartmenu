@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getCurrentProfile } from "@/lib/auth/actions";
 import { getAuditoriumsWithLayout } from "@/lib/admin/qr-actions";
+import { getEffectiveTheatreIdStrict, getActiveTheatreName } from "@/lib/theatre-context";
 import { signSeat } from "@/lib/admin/qr-utils";
 import { QRManagerClient } from "./qr-manager-client";
 
@@ -26,6 +27,8 @@ export default async function QRCodesPage() {
     redirect("/auth/unauthorized");
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
+  const activeTheatreName = await getActiveTheatreName();
   const auditoriums = await getAuditoriumsWithLayout();
 
   // Detect base URL from request headers for accurate QR links
@@ -37,7 +40,7 @@ export default async function QRCodesPage() {
   if (auditoriums.length === 0) {
     return (
       <div className="p-10 text-center text-slate-500">
-        No auditoriums configured yet. Add auditoriums in your theatre settings first.
+        No auditoriums configured yet for {activeTheatreName}. Add auditoriums in your theatre settings first.
       </div>
     );
   }
@@ -59,6 +62,9 @@ export default async function QRCodesPage() {
 
   return (
     <QRManagerClient
+      key={effectiveTheatreId}
+      theatreId={effectiveTheatreId}
+      theatreName={activeTheatreName}
       auditoriums={auditoriums}
       baseUrl={baseUrl}
       initialSignedUrls={initialSignedUrls}
