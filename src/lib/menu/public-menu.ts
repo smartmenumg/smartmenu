@@ -156,3 +156,28 @@ export async function getActiveTheatre(slug?: string) {
   const { data } = await query.maybeSingle<{ id: string; name: string; slug: string }>();
   return data;
 }
+
+/**
+ * Resolve the theatre that owns a given auditorium.
+ * Used when a customer scans a QR code that contains an audi= param but no t= param.
+ * This ensures a Satna QR always loads the Satna menu, not Khandwa's.
+ */
+export async function getTheatreByAudiId(
+  audiId: string
+): Promise<{ id: string; name: string; slug: string } | null> {
+  const client = await createAdminClient();
+
+  // Join auditoriums → theatres to resolve the correct theatre in one query
+  const { data, error } = await (client as any)
+    .from("auditoriums")
+    .select("theatre_id, theatres!inner(id, name, slug, active)")
+    .eq("id", audiId)
+    .eq("active", true)
+    .eq("theatres.active", true)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const t = data.theatres as { id: string; name: string; slug: string; active: boolean };
+  return { id: t.id, name: t.name, slug: t.slug };
+}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getActiveTheatre, getPublicMenu } from "@/lib/menu/public-menu";
+import { getActiveTheatre, getPublicMenu, getTheatreByAudiId } from "@/lib/menu/public-menu";
 import { verifySeatSignature } from "@/lib/admin/qr-utils";
 import { getDayEndState } from "@/lib/admin/day-end-actions";
 import { MenuClient } from "./menu-client";
@@ -18,7 +18,33 @@ interface OrderPageProps {
 
 export default async function OrderPage({ searchParams }: OrderPageProps) {
   const params = await searchParams;
-  const theatre = await getActiveTheatre(params.t);
+
+  // ── Step 1: Verify QR signature early ────────────────────────────────────
+  // We do this first because a valid audi= param is the BEST way to determine
+  // which theatre the customer belongs to. Without this, a missing ?t= param
+  // causes .limit(1) to return whichever theatre comes first alphabetically.
+  const rawAudi = params.audi?.trim() ?? null;
+  const rawSeat = params.seat?.trim() ?? null;
+  const rawSig  = params.sig?.trim()  ?? null;
+
+  const sigValid = rawAudi && rawSeat && rawSig
+    ? verifySeatSignature(rawAudi, rawSeat, rawSig)
+    : false;
+
+  const qrAudiId = sigValid ? rawAudi : null;
+  const qrSeat   = sigValid ? rawSeat : null;
+
+  // ── Step 2: Resolve theatre ───────────────────────────────────────────────
+  // Priority: audi-derived theatre (from QR) > slug param ?t= > first active theatre
+  let theatre = null;
+  if (qrAudiId) {
+    // QR scan: look up the theatre that owns this auditorium
+    theatre = await getTheatreByAudiId(qrAudiId);
+  }
+  if (!theatre) {
+    // Fallback: use slug or pick first active theatre
+    theatre = await getActiveTheatre(params.t);
+  }
 
   if (!theatre) {
     return (
@@ -61,18 +87,6 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
     );
   }
 
-  // QR scan pre-fill — only accepted if HMAC signature is valid.
-  const rawAudi = params.audi?.trim() ?? null;
-  const rawSeat = params.seat?.trim() ?? null;
-  const rawSig  = params.sig?.trim()  ?? null;
-
-  const sigValid = rawAudi && rawSeat && rawSig
-    ? verifySeatSignature(rawAudi, rawSeat, rawSig)
-    : false;
-
-  const qrAudiId = sigValid ? rawAudi : null;
-  const qrSeat   = sigValid ? rawSeat : null;
-
   const { categories, products, auditoriums } = await getPublicMenu(theatre.id);
 
   return (
@@ -88,3 +102,4 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
     />
   );
 }
+
