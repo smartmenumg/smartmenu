@@ -61,6 +61,24 @@ export async function POST(req: NextRequest) {
     }
 
     const theatreId = products[0].theatre_id;
+    
+    // Security: Ensure all products belong to the same theatre
+    const allSameTheatre = products.every((p) => p.theatre_id === theatreId);
+    if (!allSameTheatre) {
+      return NextResponse.json({ error: "Cart contains items from multiple theatres." }, { status: 400 });
+    }
+
+    // Security: Ensure the auditorium actually belongs to this theatre
+    const { data: audiData, error: audiError } = await (adminClient as any)
+      .from("auditoriums")
+      .select("theatre_id")
+      .eq("id", auditoriumId)
+      .single();
+
+    if (audiError || !audiData || audiData.theatre_id !== theatreId) {
+      return NextResponse.json({ error: "Auditorium does not match the selected products' theatre." }, { status: 400 });
+    }
+
     let subtotalAmount = 0;
     let totalGstAmount = 0;
 

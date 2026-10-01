@@ -16,6 +16,7 @@ export interface PublicCustomization {
 export interface PublicProduct {
   id: string;
   category_id: string;
+  theatre_id: string;
   name: string;
   description: string | null;
   price: number; // in paise
@@ -62,7 +63,7 @@ export async function getPublicMenu(theatreId: string) {
 
     client
       .from("products")
-      .select("id, category_id, name, description, price, original_price, image_url, is_combo, has_customizations, has_day_pricing, gst_rate_percent, available")
+      .select("id, category_id, theatre_id, name, description, price, original_price, image_url, is_combo, has_customizations, has_day_pricing, gst_rate_percent, available")
       .eq("theatre_id", theatreId)
       .eq("active", true)
       .eq("available", true)
@@ -119,6 +120,7 @@ export async function getPublicMenu(theatreId: string) {
     return {
       id: p.id,
       category_id: p.category_id,
+      theatre_id: p.theatre_id,
       name: p.name,
       description: p.description,
       price: effectivePrice,

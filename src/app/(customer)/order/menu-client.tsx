@@ -61,6 +61,18 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
     }
   }, [isQrScan, validQrAudi, qrSeat]);
 
+  // Security: Auto-clear cart if the user visits a different theatre's menu.
+  // E.g., User tested Satna earlier, left products in cart, then scanned Khandwa QR.
+  useEffect(() => {
+    if (cart.mounted && cart.items.length > 0) {
+      const cartTheatreId = cart.items[0].product.theatre_id;
+      if (cartTheatreId && cartTheatreId !== theatreId) {
+        console.warn("Cross-theatre cart detected. Clearing previous theatre's items.");
+        cart.clearCart();
+      }
+    }
+  }, [cart.mounted, cart.items, theatreId, cart]);
+
   // Filter products by active category
   const filteredProducts =
     activeCategoryId === "all"
