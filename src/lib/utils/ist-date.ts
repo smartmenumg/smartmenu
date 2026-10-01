@@ -14,13 +14,22 @@ export function getTodayDayStartUTC(): Date {
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
   const nowIST = new Date(now.getTime() + IST_OFFSET_MS);
 
-  // Build 06:00 IST of today (as a UTC timestamp)
-  const sixAmIST = Date.UTC(
-    nowIST.getUTCFullYear(),
-    nowIST.getUTCMonth(),
-    nowIST.getUTCDate(),
-    6, 0, 0, 0   // 06:00 in IST hour position
-  );
+  let year = nowIST.getUTCFullYear();
+  let month = nowIST.getUTCMonth();
+  let date = nowIST.getUTCDate();
+
+  // If current time in IST is before 6:00 AM, the business day started yesterday at 6:00 AM
+  if (nowIST.getUTCHours() < 6) {
+    const yesterday = new Date(nowIST);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    year = yesterday.getUTCFullYear();
+    month = yesterday.getUTCMonth();
+    date = yesterday.getUTCDate();
+  }
+
+  // Build 06:00 IST of the determined business day (as a UTC timestamp)
+  const sixAmIST = Date.UTC(year, month, date, 6, 0, 0, 0);
+  
   // Convert from IST frame back to true UTC
   return new Date(sixAmIST - IST_OFFSET_MS);
 }

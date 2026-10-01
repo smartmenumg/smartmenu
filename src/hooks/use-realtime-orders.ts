@@ -74,9 +74,25 @@ export function useRealtimeOrders({
         schema: "public",
         table: "orders",
         filter: `theatre_id=eq.${theatreId}`,
-      }, (payload) => {
-        const row = payload.new as { id: string; status: OrderStatus; updated_at: string };
-        onStatusUpdateRef.current(row.id, row.status, row.updated_at);
+      }, async (payload) => {
+        const row = payload.new as Record<string, unknown>;
+        const status = row.status as OrderStatus;
+        
+        // Always pass the status update to update existing items
+        onStatusUpdateRef.current(row.id as string, status, row.updated_at as string);
+
+        // If it's an active status, it might be an order we missed (e.g. transitioned from pending_payment)
+        // Fetch the full order and pass it to onNewOrder (which safely deduplicates)
+        if (status !== "pending_payment" && status !== "cancelled") {
+          const { data } = await client
+            .from("orders")
+            .select("*, auditoriums(id, name), order_items(*), payments(*)")
+            .eq("id", row.id as string)
+            .single();
+          if (data) {
+            onNewOrderRef.current(data as unknown as OrderWithDetails);
+          }
+        }
       })
       .subscribe(() => {
         // channel subscription status — not logged in production

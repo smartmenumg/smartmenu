@@ -15,6 +15,8 @@ interface MenuClientProps {
   categories: PublicCategory[];
   products: PublicProduct[];
   auditoriums: PublicAuditorium[];
+  theatreId: string;
+  theatreSlug: string;
   /** Pre-fill values from QR code scan (?audi=&seat= params) */
   qrAudiId?: string | null;
   qrSeat?: string | null;
@@ -22,7 +24,7 @@ interface MenuClientProps {
 
 type CheckoutStep = "menu" | "details" | "placing" | "verifying" | "success";
 
-export function MenuClient({ theatreName, categories, products, auditoriums, qrAudiId, qrSeat }: MenuClientProps) {
+export function MenuClient({ theatreName, theatreId, theatreSlug, categories, products, auditoriums, qrAudiId, qrSeat }: MenuClientProps) {
   const cart = useCart();
   const [activeCategoryId, setActiveCategoryId] = useState<string>("all");
   const [cartOpen, setCartOpen] = useState(false);
@@ -143,15 +145,30 @@ export function MenuClient({ theatreName, categories, products, auditoriums, qrA
         throw new Error("Invalid payment gateway response.");
       }
 
-      // 3. Trigger Cashfree Checkout Modal
+      // 3. Trigger Cashfree Checkout Modal (SDK v3 returns a result object — never throws)
       const cashfreeInstance = Cashfree({
         mode: orderData.environment || "sandbox",
       });
 
-      await cashfreeInstance.checkout({
+      const cfResult = await cashfreeInstance.checkout({
         paymentSessionId: orderData.paymentSessionId,
         redirectTarget: "_modal",
       });
+
+      // SDK v3 result: { error, redirect, paymentDetails }
+      // If user closed the modal or an SDK-level error occurred, bail out
+      if (cfResult?.error) {
+        console.error("Cashfree SDK error:", cfResult.error);
+        setFormError("Payment was cancelled or an error occurred. Please try again.");
+        setStep("details");
+        return;
+      }
+
+      // If payment requires a redirect (in-app browser edge case)
+      if (cfResult?.redirect) {
+        // Customer will complete payment on the return URL — nothing to do here
+        return;
+      }
 
       setStep("verifying");
 
@@ -167,8 +184,9 @@ export function MenuClient({ theatreName, categories, products, auditoriums, qrA
       if (verifyData.success) {
         setOrderToken(trackingToken);
         try {
-          const stored = JSON.parse(localStorage.getItem("order_history") ?? "[]") as string[];
-          localStorage.setItem("order_history", JSON.stringify([trackingToken, ...stored].slice(0, 10)));
+          const key = `order_history_${theatreSlug}`;
+          const stored = JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
+          localStorage.setItem(key, JSON.stringify([trackingToken, ...stored].slice(0, 10)));
         } catch {
           // ignore
         }
@@ -203,7 +221,7 @@ export function MenuClient({ theatreName, categories, products, auditoriums, qrA
           {cart.mounted && (
             <div className="flex items-center gap-2">
               <Link
-                href="/my-orders"
+                href={`/my-orders?t=${theatreSlug}`}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white/50 hover:text-white border border-white/[0.08] hover:border-white/[0.15] transition-all"
               >
                 <Package className="w-3.5 h-3.5" />

@@ -13,12 +13,12 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic"; // always fresh menu data
 
 interface OrderPageProps {
-  searchParams: Promise<{ audi?: string; seat?: string; sig?: string }>;
+  searchParams: Promise<{ audi?: string; seat?: string; sig?: string; t?: string }>;
 }
 
 export default async function OrderPage({ searchParams }: OrderPageProps) {
-  const theatre = await getActiveTheatre();
   const params = await searchParams;
+  const theatre = await getActiveTheatre(params.t);
 
   if (!theatre) {
     return (
@@ -78,6 +78,8 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
   return (
     <MenuClient
       theatreName={theatre.name}
+      theatreId={theatre.id}
+      theatreSlug={theatre.slug}
       categories={categories}
       products={products}
       auditoriums={auditoriums}

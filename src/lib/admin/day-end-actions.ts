@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
 import { logAudit } from "@/lib/audit/logger";
 import { revalidatePath } from "next/cache";
 import { getTodayDayStartUTC } from "@/lib/utils/ist-date";
@@ -51,6 +52,7 @@ export async function triggerDayEnd(): Promise<{ error?: string }> {
     return { error: "Unauthorized" };
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
   const client = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client as any)
@@ -59,7 +61,7 @@ export async function triggerDayEnd(): Promise<{ error?: string }> {
       day_ended_at: new Date().toISOString(),
       day_ended_by: session.user.id,
     })
-    .eq("id", session.profile.theatre_id);
+    .eq("id", effectiveTheatreId);
 
   if (error) return { error: error.message };
 
@@ -67,7 +69,7 @@ export async function triggerDayEnd(): Promise<{ error?: string }> {
     userId: session.user.id,
     action: "day.ended",
     entityType: "theatres",
-    entityId: session.profile.theatre_id,
+    entityId: effectiveTheatreId,
     metadata: { ended_at: new Date().toISOString() },
   });
 
@@ -83,6 +85,7 @@ export async function cancelDayEnd(): Promise<{ error?: string }> {
     return { error: "Unauthorized" };
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
   const client = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client as any)
@@ -91,7 +94,7 @@ export async function cancelDayEnd(): Promise<{ error?: string }> {
       day_ended_at: null,
       day_ended_by: null,
     })
-    .eq("id", session.profile.theatre_id);
+    .eq("id", effectiveTheatreId);
 
   if (error) return { error: error.message };
 
@@ -99,7 +102,7 @@ export async function cancelDayEnd(): Promise<{ error?: string }> {
     userId: session.user.id,
     action: "day.started",
     entityType: "theatres",
-    entityId: session.profile.theatre_id,
+    entityId: effectiveTheatreId,
     metadata: { started_at: new Date().toISOString() },
   });
 

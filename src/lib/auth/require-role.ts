@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
 import type { Profile, UserRole } from "@/types/database";
 import type { User } from "@supabase/supabase-js";
 
@@ -50,10 +51,13 @@ export async function requireRole(
     throw new AuthorizationError("Forbidden", 403);
   }
 
+  // Resolve the effective theatre (respects super admin switcher cookie)
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
+
   return {
     user,
     role: profile.role,
-    theatreId: profile.theatre_id,
+    theatreId: effectiveTheatreId,
     permissions: profile.permissions,
   };
 }

@@ -1,4 +1,5 @@
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
 import { getProducts } from "@/lib/menu/product-actions";
 import { getCategories } from "@/lib/menu/category-actions";
 import { redirect } from "next/navigation";
@@ -24,9 +25,11 @@ export default async function ProductsPage() {
     redirect("/auth/unauthorized");
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
+
   // Fetch both products and categories for the select dropdown
-  const products = await getProducts(session.profile.theatre_id);
-  const categories = await getCategories(session.profile.theatre_id);
+  const products = await getProducts(effectiveTheatreId);
+  const categories = await getCategories(effectiveTheatreId);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">

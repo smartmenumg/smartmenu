@@ -19,6 +19,8 @@ import {
   Zap,
   QrCode,
 } from "lucide-react";
+import { TheatreSwitcher } from "@/components/admin/theatre-switcher";
+import type { TheatreOption } from "@/lib/theatre-context";
 
 interface NavItem {
   label: string;
@@ -85,9 +87,12 @@ interface DashboardShellProps {
   profile: { role: UserRole; full_name: string | null; theatre_id: string; permissions: string[] };
   user?: { id?: string; email?: string };
   children: React.ReactNode;
+  theatres?: TheatreOption[] | null;
+  activeTheatreId?: string | null;
+  activeTheatreName?: string;
 }
 
-export function DashboardShell({ profile, children }: DashboardShellProps) {
+export function DashboardShell({ profile, children, theatres, activeTheatreId, activeTheatreName }: DashboardShellProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -112,10 +117,21 @@ export function DashboardShell({ profile, children }: DashboardShellProps) {
           <UtensilsCrossed className="w-4 h-4 text-black" />
         </div>
         <div className="min-w-0">
-          <p className="font-display font-semibold text-white text-sm tracking-tight truncate">CineBites</p>
+          <p className="font-display font-semibold text-white text-sm tracking-tight truncate">SmartMenu</p>
           <p className="text-[10px] text-white/35 tracking-widest uppercase truncate">Admin Portal</p>
         </div>
       </div>
+
+      {/* Theatre Switcher — super_admin only */}
+      {profile.role === "super_admin" && theatres && theatres.length > 0 && (
+        <div className="pt-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <TheatreSwitcher
+            theatres={theatres}
+            activeTheatreId={activeTheatreId ?? null}
+            activeTheatreName={activeTheatreName ?? "All Theatres"}
+          />
+        </div>
+      )}
 
       {/* Navigation */}
       {/* Navigation */}
@@ -187,7 +203,7 @@ export function DashboardShell({ profile, children }: DashboardShellProps) {
             <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>
               <UtensilsCrossed className="w-3.5 h-3.5 text-black" />
             </div>
-            <span className="font-display font-semibold text-sm text-white tracking-tight">CineBites</span>
+            <span className="font-display font-semibold text-sm text-white tracking-tight">SmartMenu</span>
           </div>
         </header>
 

@@ -47,6 +47,8 @@ import {
 interface AccountsClientProps {
   initialProfiles: ProfileWithEmail[];
   currentUserId: string;
+  theatres?: { id: string; name: string }[];
+  effectiveTheatreId?: string;
 }
 
 const ROLE_META: Record<
@@ -81,7 +83,7 @@ const PERMISSIONS_META = [
 
 // ─── Create Staff Modal ───────────────────────────────────────────────────────
 
-function CreateStaffModal({ onClose }: { onClose: () => void }) {
+function CreateStaffModal({ onClose, theatres, defaultTheatreId }: { onClose: () => void, theatres?: {id:string, name:string}[], defaultTheatreId?: string }) {
   const [isPending, startTransition] = useTransition();
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,7 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
     password: "",
     role: "admin" as "admin" | "menu",
     permissions: ["live_orders", "menu", "qr_codes"] as string[],
+    theatre_id: defaultTheatreId || (theatres && theatres.length > 0 ? theatres[0].id : ""),
   });
 
   const set =
@@ -254,6 +257,26 @@ function CreateStaffModal({ onClose }: { onClose: () => void }) {
                       <option value="menu">Menu Manager — menu editing only</option>
                     </select>
                   </div>
+
+                  {/* Theatre (Super Admin Only) */}
+                  {theatres && theatres.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                        Theatre
+                      </Label>
+                      <select
+                        value={form.theatre_id}
+                        onChange={set("theatre_id")}
+                        className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm outline-none focus:border-amber-500/50 transition-colors"
+                      >
+                        {theatres.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {form.role === "admin" && (
                     <div className="space-y-3 pt-2">
@@ -437,6 +460,8 @@ function EditPermissionsModal({
 export function AccountsClient({
   initialProfiles,
   currentUserId,
+  theatres,
+  effectiveTheatreId,
 }: AccountsClientProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -463,7 +488,11 @@ export function AccountsClient({
     <div className="space-y-6">
       {/* Create modal */}
       {showCreate && (
-        <CreateStaffModal onClose={() => setShowCreate(false)} />
+        <CreateStaffModal 
+          onClose={() => setShowCreate(false)} 
+          theatres={theatres}
+          defaultTheatreId={effectiveTheatreId}
+        />
       )}
 
       {/* Permissions modal */}

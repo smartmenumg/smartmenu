@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { getEffectiveTheatreId } from "@/lib/theatre-context";
 import { getTodayDayStartUTC } from "@/lib/utils/ist-date";
 import type { OrderWithDetails } from "@/types/database";
 import type { OrderHistoryFilters, OrderHistoryMetrics } from "@/types/order-history";
@@ -54,22 +55,29 @@ export async function getOrderHistory(
   const session = await getCurrentProfile();
   if (!session) return { error: "Unauthorized" };
 
-  const { role, permissions, theatre_id } = session.profile;
+  const { role, permissions } = session.profile;
   const ok = role === "super_admin" || (role === "admin" && permissions?.includes("revenue"));
   if (!ok) return { error: "Unauthorized" };
+
+  const effectiveTheatreId = await getEffectiveTheatreId();
 
   const { startUTC, endUTC, label } = await resolveFilterDates(filters);
   const admin = await createAdminClient();
 
-  const { data: raw, error } = await admin
+  let query = admin
     .from("orders")
     .select("*, auditoriums(id,name), order_items(*), payments!inner(*)")
-    .eq("theatre_id", theatre_id)
     .eq("payments.status", "paid")
-    // .not("status", "eq", "cancelled")
     .gte("created_at", startUTC.toISOString())
     .lte("created_at", endUTC.toISOString())
     .order("created_at", { ascending: false });
+
+  // Filter by theatre: null means "All Theatres" (super_admin only)
+  if (effectiveTheatreId) {
+    query = query.eq("theatre_id", effectiveTheatreId);
+  }
+
+  const { data: raw, error } = await query;
 
   if (error) return { error: error.message };
 

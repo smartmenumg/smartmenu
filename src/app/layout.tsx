@@ -19,10 +19,10 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "CineBites - Theatre Food Ordering",
-    template: "%s | CineBites",
+    default: "SmartMenu — In-Seat Dining by Mahavir Group",
+    template: "%s | SmartMenu",
   },
-  description: "Order premium food from your seat - the ultimate theatre food experience.",
+  description: "Order premium food and beverages directly to your cinema seat. SmartMenu by Mahavir Group — Experience. Quality. Trust.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
   ),
@@ -33,7 +33,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="scroll-smooth">
       <body
         className={`${dmSans.variable} ${spaceGrotesk.variable} antialiased min-h-screen bg-background text-foreground`}
       >

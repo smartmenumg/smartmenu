@@ -30,7 +30,7 @@ export async function getCategories(theatreId: string): Promise<Category[]> {
 export async function createCategory(
   formData: FormData
 ): Promise<{ error?: string }> {
-  const session = await requireRole("menu", "super_admin");
+  const session = await requireRole("menu", "admin", "super_admin");
 
   const parsed = categorySchema.safeParse({
     name: formData.get("name"),
@@ -76,7 +76,7 @@ export async function updateCategory(
   id: string,
   formData: FormData
 ): Promise<{ error?: string }> {
-  await requireRole("menu", "super_admin");
+  await requireRole("menu", "admin", "super_admin");
 
   const parsed = categorySchema.safeParse({
     name: formData.get("name"),
@@ -103,7 +103,7 @@ export async function updateCategory(
 // ─── Delete (soft-delete) category ───────────────────────────────────────────
 
 export async function deleteCategory(id: string): Promise<{ error?: string }> {
-  await requireRole("menu", "super_admin");
+  await requireRole("menu", "admin", "super_admin");
 
   const adminClient = await createAdminClient();
 
@@ -125,3 +125,4 @@ export async function deleteCategory(id: string): Promise<{ error?: string }> {
   revalidatePath(MENU_PATH);
   return {};
 }
+

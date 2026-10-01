@@ -31,7 +31,7 @@ export async function getProducts(theatreId: string): Promise<Product[]> {
 export async function createProduct(
   formData: FormData
 ): Promise<{ error?: string }> {
-  const session = await requireRole("menu", "super_admin");
+  const session = await requireRole("menu", "admin", "super_admin");
 
   const priceInput = formData.get("price") as string;
   const priceInPaise = Math.round(parseFloat(priceInput) * 100);
@@ -82,7 +82,7 @@ export async function updateProduct(
   id: string,
   formData: FormData
 ): Promise<{ error?: string }> {
-  const session = await requireRole("menu", "super_admin");
+  const session = await requireRole("menu", "admin", "super_admin");
 
   const priceInput = formData.get("price") as string;
   const priceInPaise = Math.round(parseFloat(priceInput) * 100);
@@ -138,7 +138,7 @@ export async function toggleProductAvailability(
   id: string,
   available: boolean
 ): Promise<{ error?: string }> {
-  const session = await requireRole("menu", "super_admin");
+  const session = await requireRole("menu", "admin", "super_admin");
 
   const adminClient = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -165,7 +165,7 @@ export async function toggleProductAvailability(
 // ─── Delete (soft-delete) product ────────────────────────────────────────────
 
 export async function deleteProduct(id: string): Promise<{ error?: string }> {
-  const session = await requireRole("menu", "super_admin");
+  const session = await requireRole("menu", "admin", "super_admin");
 
   const adminClient = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -194,7 +194,7 @@ export async function createCombo(
   formData: FormData,
   items: { item_product_id: string; quantity: number }[]
 ): Promise<{ error?: string }> {
-  const session = await requireRole("menu", "super_admin");
+  const session = await requireRole("menu", "admin", "super_admin");
 
   if (!items || items.length === 0) {
     return { error: "A combo must include at least one item." };
@@ -300,7 +300,7 @@ export async function createProductCustomization(
   name: string,
   priceAdjustmentRupees: number
 ): Promise<{ error?: string }> {
-  await requireRole("menu", "super_admin");
+  await requireRole("menu", "admin", "super_admin");
 
   const priceAdjustmentPaise = Math.round(priceAdjustmentRupees * 100);
 
@@ -337,7 +337,7 @@ export async function deleteProductCustomization(
   customizationId: string,
   productId: string
 ): Promise<{ error?: string }> {
-  await requireRole("menu", "super_admin");
+  await requireRole("menu", "admin", "super_admin");
 
   const adminClient = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -399,7 +399,7 @@ export async function saveProductDayPricing(
     }>;
   }
 ): Promise<{ error?: string }> {
-  await requireRole("menu", "super_admin");
+  await requireRole("menu", "admin", "super_admin");
 
   const adminClient = await createAdminClient();
 
@@ -435,4 +435,5 @@ export async function saveProductDayPricing(
   revalidatePath("/order");
   return {};
 }
+
 

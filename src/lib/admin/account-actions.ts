@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
 import { createStaffUser } from "@/lib/auth/actions";
+import { getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
 import { createUserSchema } from "@/lib/validations/schemas";
 import { revalidatePath } from "next/cache";
 import { logAudit } from "@/lib/audit/logger";
@@ -25,11 +26,12 @@ export async function getProfiles(): Promise<ProfileWithEmail[]> {
   }
 
   const admin = await createAdminClient();
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
 
   const { data, error } = await admin
     .from("profiles")
     .select("*")
-    .eq("theatre_id", session.profile.theatre_id)
+    .eq("theatre_id", effectiveTheatreId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -51,13 +53,14 @@ export async function toggleProfileActive(profileId: string, currentStatus: bool
     return { error: "You cannot deactivate your own account" };
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
   const admin = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (admin as any)
     .from("profiles")
     .update({ active: !currentStatus, updated_at: new Date().toISOString() })
     .eq("id", profileId)
-    .eq("theatre_id", session.profile.theatre_id);
+    .eq("theatre_id", effectiveTheatreId);
 
   if (error) {
     return { error: error.message };
@@ -89,13 +92,14 @@ export async function updateProfileRole(profileId: string, newRole: UserRole) {
     return { error: "You cannot demote your own super admin role" };
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
   const admin = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (admin as any)
     .from("profiles")
     .update({ role: newRole, updated_at: new Date().toISOString() })
     .eq("id", profileId)
-    .eq("theatre_id", session.profile.theatre_id);
+    .eq("theatre_id", effectiveTheatreId);
 
   if (error) {
     return { error: error.message };
@@ -119,13 +123,14 @@ export async function updateProfilePermissions(profileId: string, permissions: s
     return { error: "Unauthorized" };
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
   const admin = await createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (admin as any)
     .from("profiles")
     .update({ permissions, updated_at: new Date().toISOString() })
     .eq("id", profileId)
-    .eq("theatre_id", session.profile.theatre_id);
+    .eq("theatre_id", effectiveTheatreId);
 
   if (error) {
     return { error: error.message };
@@ -153,6 +158,7 @@ export async function createStaffAccount(params: {
   role: "menu" | "admin";
   full_name: string;
   permissions: string[];
+  theatre_id: string;
 }): Promise<{ error?: string }> {
   const session = await getCurrentProfile();
   if (!session || session.profile.role !== "super_admin") {
@@ -176,7 +182,7 @@ export async function createStaffAccount(params: {
     role: parsed.data.role,
     fullName: parsed.data.full_name,
     permissions: params.permissions,
-    theatreId: session.profile.theatre_id,
+    theatreId: params.theatre_id,
     createdBy: session.user.id,
   });
 

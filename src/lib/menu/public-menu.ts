@@ -139,14 +139,20 @@ export async function getPublicMenu(theatreId: string) {
   };
 }
 
-/** Get the first active theatre (single-theatre MVP) */
-export async function getActiveTheatre() {
+/** Get the active theatre (optionally by slug) */
+export async function getActiveTheatre(slug?: string) {
   const client = await createAdminClient();
-  const { data } = await client
+  let query = client
     .from("theatres")
     .select("id, name, slug")
-    .eq("active", true)
-    .limit(1)
-    .maybeSingle<{ id: string; name: string; slug: string }>();
+    .eq("active", true);
+    
+  if (slug) {
+    query = query.eq("slug", slug);
+  } else {
+    query = query.limit(1);
+  }
+
+  const { data } = await query.maybeSingle<{ id: string; name: string; slug: string }>();
   return data;
 }

@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
 import { signSeat } from "./qr-utils";
 
 export interface SeatRow {
@@ -48,11 +49,13 @@ export async function getAuditoriumsWithLayout(): Promise<AuditoriumWithLayout[]
   const session = await getCurrentProfile();
   if (!session) return [];
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (await createAdminClient() as any)
     .from("auditoriums")
     .select("id, name, display_order, total_seats, seat_layout")
-    .eq("theatre_id", session.profile.theatre_id)
+    .eq("theatre_id", effectiveTheatreId)
     .eq("active", true)
     .order("display_order", { ascending: true });
 
@@ -85,12 +88,14 @@ export async function saveSeatLayout(
     if (row.to < row.from) return { error: `Row ${row.name}: end seat must be >= start seat.` };
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (await createAdminClient() as any)
     .from("auditoriums")
     .update({ seat_layout: layout })
     .eq("id", auditoriumId)
-    .eq("theatre_id", session.profile.theatre_id);
+    .eq("theatre_id", effectiveTheatreId);
 
   if (error) return { error: error.message };
 

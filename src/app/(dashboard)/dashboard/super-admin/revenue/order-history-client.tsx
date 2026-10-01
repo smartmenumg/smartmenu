@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useEffect } from "react";
 import type { OrderHistoryMetrics, DateRangePreset, OrderHistoryFilters } from "@/types/order-history";
 import { GATEWAY_FEE_PERCENT } from "@/types/order-history";
 import type { OrderWithDetails } from "@/types/database";
@@ -49,6 +49,13 @@ export function OrderHistoryClient({
   const [endDate, setEndDate]     = useState("");
   const [showPresets, setShowPresets] = useState(false);
   const [loading, startTransition]  = useTransition();
+
+  // Sync state when props change (e.g., after switching theatres or revalidation)
+  useEffect(() => {
+    setMetrics(initialMetrics);
+    setOrders(initialOrders);
+    setLabel(initialLabel);
+  }, [initialMetrics, initialOrders, initialLabel]);
 
   const applyFilter = useCallback((filters: OrderHistoryFilters) => {
     startTransition(async () => {

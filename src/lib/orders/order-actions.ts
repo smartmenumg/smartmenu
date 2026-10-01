@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { getEffectiveTheatreId } from "@/lib/theatre-context";
 import { revalidatePath } from "next/cache";
 import type { OrderStatus, OrderWithDetails } from "@/types/database";
 import { getTodayDayStartUTC } from "@/lib/utils/ist-date";
@@ -16,10 +17,11 @@ export async function getAdminOrders(): Promise<OrderWithDetails[]> {
 
   const admin = await createAdminClient();
 
-  // Business day starts at 06:00 IST — filter to today's orders only
+  // null = super admin in "all theatres" mode — fetch across all theatres
+  const effectiveTheatreId = await getEffectiveTheatreId();
   const dayStartUTC = getTodayDayStartUTC();
 
-  const { data, error } = await admin
+  let query = admin
     .from("orders")
     .select(`
       *,
@@ -27,11 +29,17 @@ export async function getAdminOrders(): Promise<OrderWithDetails[]> {
       order_items ( * ),
       payments ( * )
     `)
-    .eq("theatre_id", session.profile.theatre_id)
     .neq("status", "pending_payment")
     .gte("created_at", dayStartUTC.toISOString())
     .order("created_at", { ascending: false })
     .limit(200);
+
+  // Filter by theatre only when a specific theatre is selected
+  if (effectiveTheatreId !== null) {
+    query = query.eq("theatre_id", effectiveTheatreId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("getAdminOrders error:", error);
@@ -57,10 +65,10 @@ export async function updateOrderStatus(
     return { error: "Invalid status transition" };
   }
 
+  const effectiveTheatreId = await getEffectiveTheatreId();
   const admin = await createAdminClient();
 
-  // The database trigger enforces strict linear status transitions (accepted -> preparing -> ready -> delivered).
-  // Since the UI now skips directly from accepted to delivered, we need to walk the order through the intermediate states.
+  // The database trigger enforces strict linear status transitions.
   if (newStatus === "delivered") {
     // 1. Fetch current status
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,11 +83,16 @@ export async function updateOrderStatus(
 
     for (const s of sequence) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (admin as any)
+      let query = (admin as any)
         .from("orders")
         .update({ status: s, updated_at: new Date().toISOString() })
-        .eq("id", orderId)
-        .eq("theatre_id", session.profile.theatre_id);
+        .eq("id", orderId);
+        
+      if (effectiveTheatreId !== null) {
+        query = query.eq("theatre_id", effectiveTheatreId);
+      }
+        
+      const { error } = await query;
       
       if (error) {
         console.error(`Supabase update error (status ${s}):`, error);
@@ -89,11 +102,16 @@ export async function updateOrderStatus(
   } else {
     // Standard direct update
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (admin as any)
+    let query = (admin as any)
       .from("orders")
       .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq("id", orderId)
-      .eq("theatre_id", session.profile.theatre_id);
+      .eq("id", orderId);
+      
+    if (effectiveTheatreId !== null) {
+      query = query.eq("theatre_id", effectiveTheatreId);
+    }
+      
+    const { error } = await query;
 
     if (error) {
       console.error("Supabase update error:", error);

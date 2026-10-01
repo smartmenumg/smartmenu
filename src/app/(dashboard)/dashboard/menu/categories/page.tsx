@@ -1,4 +1,5 @@
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
 import { getCategories } from "@/lib/menu/category-actions";
 import { redirect } from "next/navigation";
 import { CategoriesClient } from "./categories-client";
@@ -23,7 +24,8 @@ export default async function CategoriesPage() {
     redirect("/auth/unauthorized");
   }
 
-  const categories = await getCategories(session.profile.theatre_id);
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
+  const categories = await getCategories(effectiveTheatreId);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">

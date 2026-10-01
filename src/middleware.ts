@@ -24,19 +24,14 @@ const PERMISSION_SEGMENT_MAP: Record<string, string[]> = {
 };
 
 /** Public routes — never redirect */
-const PUBLIC_PREFIXES = ["/order", "/track", "/my-orders", "/auth", "/api", "/_next", "/favicon"];
+const PUBLIC_PREFIXES = ["/order", "/track", "/my-orders", "/auth", "/api", "/_next", "/favicon", "/terms", "/privacy", "/refund"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow public paths
-  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
+  // Always allow public paths and root landing page
+  if (pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return await refreshSession(request);
-  }
-
-  // Root redirect
-  if (pathname === "/") {
-    return NextResponse.redirect(new URL("/order", request.url));
   }
 
   // Refresh session first

@@ -51,9 +51,11 @@ function formatTodayIST(): string {
 function OrderCard({
   order,
   onStatusUpdate,
+  showTheatreTag,
 }: {
   order: OrderWithDetails;
   onStatusUpdate: (id: string, status: OrderStatus) => Promise<void>;
+  showTheatreTag?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [loading, startTransition] = useTransition();
@@ -79,12 +81,17 @@ function OrderCard({
       <div className="p-4 sm:p-5">
         {/* ── Row 1: ID / status / time ── */}
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono text-xs font-semibold text-slate-800">#{shortId}</span>
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ${cfg.bg} ${cfg.color}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${order.status === "confirmed" ? "animate-pulse" : ""}`} />
               {cfg.label}
             </span>
+            {showTheatreTag && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200">
+                {showTheatreTag}
+              </span>
+            )}
           </div>
           <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
             <Clock className="w-3 h-3" />
@@ -204,11 +211,12 @@ function useOrderSound() {
 
 interface AdminOrdersClientProps {
   initialOrders: OrderWithDetails[];
-  theatreId: string;
+  theatreId: string;           // effective theatre UUID, or "all" for super admin all-theatres view
   theatreName: string;
   isDayEnded: boolean;
   profile: { role: UserRole; full_name: string | null };
   userInitial: string;
+  allTheatres?: { id: string; name: string }[]; // passed when theatreId is "all"
 }
 
 export function AdminOrdersClient({
@@ -217,7 +225,10 @@ export function AdminOrdersClient({
   theatreName,
   isDayEnded: initialDayEnded,
   userInitial,
+  allTheatres,
 }: AdminOrdersClientProps) {
+  const isAllView = theatreId === "all";
+  const theatreMap = new Map((allTheatres ?? []).map(t => [t.id, t.name]));
   const [orders, setOrders]             = useState<OrderWithDetails[]>(initialOrders);
   const [refreshing, startRefresh]      = useTransition();
   const [activeTab, setActiveTab]       = useState<"active" | "done">("active");
@@ -226,6 +237,12 @@ export function AdminOrdersClient({
   const [dayEndLoading, startDayEnd]    = useTransition();
   const [showDropdown, setShowDropdown] = useState(false);
   const playChime = useOrderSound();
+
+  // Sync state when props change (e.g. after theatre switch revalidation)
+  useEffect(() => {
+    setOrders(initialOrders);
+    setIsDayEnded(initialDayEnded);
+  }, [initialOrders, initialDayEnded]);
 
   const handleNewOrder = useCallback((order: OrderWithDetails) => {
     setOrders(prev => prev.some(o => o.id === order.id) ? prev : [order, ...prev]);
@@ -259,7 +276,13 @@ export function AdminOrdersClient({
     });
   }, []);
 
-  useRealtimeOrders({ theatreId, onNewOrder: handleNewOrder, onStatusUpdate: handleRealtimeUpdate, pollFn: getAdminOrders, onPollResult: mergePollOrders, pollIntervalMs: 12000 });
+  useRealtimeOrders({ theatreId: isAllView ? "" : theatreId, onNewOrder: handleNewOrder, onStatusUpdate: handleRealtimeUpdate, pollFn: getAdminOrders, onPollResult: mergePollOrders, pollIntervalMs: 8000 });
+
+  // Client-side theatre filter: when a specific theatre is selected, drop
+  // any orders from other theatres that may have snuck in via polling.
+  const filteredOrders = isAllView
+    ? orders
+    : orders.filter(o => o.theatre_id === theatreId);
 
   useEffect(() => {
     const t = setTimeout(() => setConnected(true), 1500);
@@ -291,8 +314,8 @@ export function AdminOrdersClient({
     });
   };
 
-  const active = orders.filter(o => ACTIVE_STATUSES.includes(o.status));
-  const done   = orders.filter(o => DONE_STATUSES.includes(o.status));
+  const active = filteredOrders.filter(o => ACTIVE_STATUSES.includes(o.status));
+  const done   = filteredOrders.filter(o => DONE_STATUSES.includes(o.status));
   const shown  = activeTab === "active" ? active : done;
 
   return (
@@ -441,7 +464,12 @@ export function AdminOrdersClient({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
             {shown.map(order => (
-              <OrderCard key={order.id} order={order} onStatusUpdate={handleStatusUpdate} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                onStatusUpdate={handleStatusUpdate}
+                showTheatreTag={isAllView ? (theatreMap.get(order.theatre_id) ?? order.theatre_id) : undefined}
+              />
             ))}
           </div>
         )}

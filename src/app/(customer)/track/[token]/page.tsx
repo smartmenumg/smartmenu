@@ -19,6 +19,7 @@ export default async function TrackOrderPage({
       subtotal_amount, gst_amount, total_amount,
       status, created_at,
       auditoriums (name),
+      theatres (slug),
       order_items (
         id, product_name, unit_price, quantity, subtotal,
         gst_amount, selected_customizations
@@ -42,5 +43,5 @@ export default async function TrackOrderPage({
     );
   }
 
-  return <TrackOrderClient initialOrder={order} />;
+  return <TrackOrderClient initialOrder={order} theatreSlug={order.theatres?.slug} />;
 }

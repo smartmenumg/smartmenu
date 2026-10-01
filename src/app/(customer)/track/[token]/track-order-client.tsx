@@ -52,7 +52,7 @@ function getStepState(stepKey: OrderStatus, currentStatus: OrderStatus): "done" 
   return "upcoming";
 }
 
-export function TrackOrderClient({ initialOrder }: { initialOrder: TrackingOrder }) {
+export function TrackOrderClient({ initialOrder, theatreSlug }: { initialOrder: TrackingOrder; theatreSlug?: string }) {
   const [status, setStatus] = useState<OrderStatus>(initialOrder.status);
   const [justUpdated, setJustUpdated] = useState(false);
 
@@ -101,7 +101,7 @@ export function TrackOrderClient({ initialOrder }: { initialOrder: TrackingOrder
       >
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-3">
           <Link
-            href="/order"
+            href={theatreSlug ? `/order?t=${theatreSlug}` : "/order"}
             className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

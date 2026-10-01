@@ -1,24 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, Clock, Package, UtensilsCrossed } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
-
-
-export default function MyOrdersPage() {
+function MyOrdersContent() {
   const [tokens, setTokens] = useState<string[]>([]);
+  const searchParams = useSearchParams();
+  const theatreSlug = searchParams.get("t");
+  const storageKey = theatreSlug ? `order_history_${theatreSlug}` : "order_history";
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("order_history") ?? "[]") as string[];
-      // eslint-disable-next-line
+      const stored = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
       setTokens(stored);
     } catch {
-      // eslint-disable-next-line
       setTokens([]);
     }
-  }, []);
+  }, [storageKey]);
 
   return (
     <div className="min-h-screen text-white" style={{ background: "#080808" }}>
@@ -27,7 +27,7 @@ export default function MyOrdersPage() {
         style={{ background: "rgba(8,8,8,0.93)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
       >
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-3">
-          <Link href="/order" className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors">
+          <Link href={theatreSlug ? `/order?t=${theatreSlug}` : "/order"} className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div className="flex items-center gap-2">
@@ -76,7 +76,7 @@ export default function MyOrdersPage() {
             ))}
             <button
               onClick={() => {
-                localStorage.removeItem("order_history");
+                localStorage.removeItem(storageKey);
                 setTokens([]);
               }}
               className="w-full py-2.5 text-xs text-white/25 hover:text-red-400 transition-colors mt-2"
@@ -87,5 +87,13 @@ export default function MyOrdersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function MyOrdersPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ background: "#080808" }} />}>
+      <MyOrdersContent />
+    </Suspense>
   );
 }

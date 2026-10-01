@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth/actions";
 import { getProfiles } from "@/lib/admin/account-actions";
+import { getAllTheatres, getEffectiveTheatreIdStrict } from "@/lib/theatre-context";
 import { AccountsClient } from "./accounts-client";
 
 export const metadata: Metadata = {
@@ -26,6 +27,8 @@ export default async function AccountsPage() {
   }
 
   const profiles = await getProfiles();
+  const theatres = role === "super_admin" ? await getAllTheatres() : [];
+  const effectiveTheatreId = await getEffectiveTheatreIdStrict();
 
   return (
     <div className="p-6 md:p-10 space-y-8 max-w-5xl mx-auto">
@@ -38,7 +41,12 @@ export default async function AccountsPage() {
         </p>
       </div>
 
-      <AccountsClient initialProfiles={profiles} currentUserId={session.user.id} />
+      <AccountsClient 
+        initialProfiles={profiles} 
+        currentUserId={session.user.id} 
+        theatres={theatres}
+        effectiveTheatreId={effectiveTheatreId}
+      />
     </div>
   );
 }

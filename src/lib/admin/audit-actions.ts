@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/actions";
+import { getEffectiveTheatreId } from "@/lib/theatre-context";
 import type { AuditLog } from "@/types/database";
 
 export interface AuditLogWithUser extends AuditLog {
@@ -18,12 +19,16 @@ export async function getAuditLogs(): Promise<AuditLogWithUser[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adminAny = admin as any;
 
-  // Fetch logs
-  const { data: logs, error: logsError } = await adminAny
+  const effectiveTheatreId = await getEffectiveTheatreId();
+
+  // Fetch logs (system-wide)
+  const logsQuery = adminAny
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(200);
+
+  const { data: logs, error: logsError } = await logsQuery;
 
   if (logsError) {
     console.error("getAuditLogs error:", logsError);
