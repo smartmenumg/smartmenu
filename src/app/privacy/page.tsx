@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — SmartMenu by Mahavir Group",
+  title: "Privacy Policy — Veer Cinema Food and Beverages by Mahavir Group",
 };
 
 export default function PrivacyPage() {
@@ -33,12 +33,12 @@ export default function PrivacyPage() {
           <div className="space-y-8 text-[#555] text-sm leading-relaxed">
             <section>
               <h2 className="text-base font-semibold text-[#0f2336] mb-3">1. Introduction</h2>
-              <p>Mahavir Group (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) is committed to protecting your personal information. This Privacy Policy explains how we collect, use, store, and protect the data you provide when using SmartMenu.</p>
+              <p>Mahavir Group (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) is committed to protecting your personal information. This Privacy Policy explains how we collect, use, store, and protect the data you provide when using Veer Cinema Food and Beverages.</p>
             </section>
 
             <section>
               <h2 className="text-base font-semibold text-[#0f2336] mb-3">2. Information We Collect</h2>
-              <p className="mb-2">When you place an order through SmartMenu, we collect the following information:</p>
+              <p className="mb-2">When you place an order through Veer Cinema Food and Beverages, we collect the following information:</p>
               <ul className="list-disc list-inside space-y-1 pl-2">
                 <li>Your name and mobile number (for order identification and communication)</li>
                 <li>Your seat and auditorium details (for delivery purposes)</li>

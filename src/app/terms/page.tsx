@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions — SmartMenu by Mahavir Group",
+  title: "Terms & Conditions — Veer Cinema Food and Beverages by Mahavir Group",
 };
 
 export default function TermsPage() {
@@ -34,12 +34,12 @@ export default function TermsPage() {
           <div className="space-y-8 text-[#555] text-sm leading-relaxed">
             <section>
               <h2 className="text-base font-semibold text-[#0f2336] mb-3">1. Acceptance of Terms</h2>
-              <p>By accessing or using SmartMenu (&quot;the Platform&quot;), a proprietary food ordering service operated by Mahavir Group, you agree to be bound by these Terms &amp; Conditions. If you do not agree, you must not use the Platform.</p>
+              <p>By accessing or using Veer Cinema Food and Beverages (&quot;the Platform&quot;), a proprietary food ordering service operated by Mahavir Group, you agree to be bound by these Terms &amp; Conditions. If you do not agree, you must not use the Platform.</p>
             </section>
 
             <section>
               <h2 className="text-base font-semibold text-[#0f2336] mb-3">2. About the Platform</h2>
-              <p>SmartMenu is an in-seat food and beverage ordering platform provided exclusively within Mahavir Group's cinema properties. Orders placed through SmartMenu are fulfilled by the respective theatre's food and beverage operations team.</p>
+              <p>Veer Cinema Food and Beverages is an in-seat food and beverage ordering platform provided exclusively within Mahavir Group's cinema properties. Orders placed through Veer Cinema Food and Beverages are fulfilled by the respective theatre's food and beverage operations team.</p>
             </section>
 
             <section>
@@ -55,7 +55,7 @@ export default function TermsPage() {
 
             <section>
               <h2 className="text-base font-semibold text-[#0f2336] mb-3">5. Intellectual Property</h2>
-              <p>All content, trademarks, and intellectual property on the Platform, including the SmartMenu name and the Mahavir Group logo, are the exclusive property of Mahavir Group. Unauthorized use, reproduction, or distribution is strictly prohibited.</p>
+              <p>All content, trademarks, and intellectual property on the Platform, including the Veer Cinema Food and Beverages name and the Mahavir Group logo, are the exclusive property of Mahavir Group. Unauthorized use, reproduction, or distribution is strictly prohibited.</p>
             </section>
 
             <section>

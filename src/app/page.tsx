@@ -4,9 +4,9 @@ import { ArrowRight, QrCode, ShoppingBag, CreditCard, PackageCheck } from "lucid
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "SmartMenu — In-Seat Dining by Mahavir Group",
+  title: "Veer Cinema Food and Beverages — In-Seat Dining by Mahavir Group",
   description:
-    "Order premium food and beverages directly to your cinema seat. SmartMenu by Mahavir Group — Experience. Quality. Trust.",
+    "Order premium food and beverages directly to your cinema seat. Veer Cinema Food and Beverages by Mahavir Group — Experience. Quality. Trust.",
 };
 
 const steps = [
@@ -123,7 +123,7 @@ export default function LandingPage() {
             {/* Pill badge */}
             <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/8 backdrop-blur-sm border border-white/12 text-white/70 text-xs font-semibold tracking-widest uppercase mb-10">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              Mahavir Group · SmartMenu
+              Mahavir Group · Veer Cinema Food and Beverages
             </div>
 
             <h1
@@ -139,7 +139,7 @@ export default function LandingPage() {
 
             <p className="max-w-lg mx-auto text-lg text-white/55 leading-relaxed mb-12">
               Scan. Select. Pay. Enjoy — all without leaving your seat.
-              SmartMenu brings a premium dining experience to every show.
+              Veer Cinema Food and Beverages brings a premium dining experience to every show.
             </p>
 
             <p className="text-white/30 text-xs tracking-widest uppercase">
@@ -238,7 +238,7 @@ export default function LandingPage() {
                 className="h-9 w-auto object-contain mb-5 brightness-0 invert opacity-50"
               />
               <p className="text-sm leading-relaxed max-w-xs">
-                SmartMenu is Mahavir Group's proprietary in-seat food ordering
+                Veer Cinema Food and Beverages is Mahavir Group's proprietary in-seat food ordering
                 platform, serving cinema guests across all our properties.
               </p>
             </div>
@@ -296,7 +296,7 @@ export default function LandingPage() {
 
           <div className="pt-8 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-white/25">
             <p>© {new Date().getFullYear()} Mahavir Group. All rights reserved.</p>
-            <p>Powered by SmartMenu</p>
+            <p>Powered by Veer Cinema Food and Beverages</p>
           </div>
         </div>
       </footer>

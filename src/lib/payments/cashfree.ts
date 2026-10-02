@@ -65,7 +65,7 @@ export async function createCashfreeOrder(
       order_meta: {
         return_url: params.returnUrl,
       },
-      order_note: `SmartMenu ${cfOrderId.slice(0, 8)}`,
+      order_note: `Veer Cinema Food and Beverages ${cfOrderId.slice(0, 8)}`,
     };
 
     const res = await fetch(`${CASHFREE_BASE_URL}/orders`, {
