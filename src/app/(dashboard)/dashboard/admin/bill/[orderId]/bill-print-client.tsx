@@ -115,7 +115,7 @@ export function BillPrintClient({ order, theatre }: { order: Order; theatre: The
             <tr>
               <td className="bill-meta-label">Payment</td>
               <td className="bill-meta-value capitalize">
-                {order.payments?.[0]?.status === "paid" ? "✓ Paid (Cashfree)" : "Pending"}
+                {order.payments?.[0]?.status === "paid" ? "✓ Paid (Online)" : "Pending"}
               </td>
             </tr>
           </tbody>
