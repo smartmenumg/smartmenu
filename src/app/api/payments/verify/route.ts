@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getCashfreeOrderPayments } from "@/lib/payments/cashfree";
+import { verifyRazorpaySignature } from "@/lib/payments/razorpay";
 
-async function verifyAndConfirm(orderId: string) {
+async function verifyAndConfirm(
+  orderId: string,
+  razorpayPaymentId?: string,
+  razorpayOrderId?: string,
+  razorpaySignature?: string
+) {
   const adminClient = await createAdminClient();
 
   // 1. Fetch order details
@@ -22,22 +27,20 @@ async function verifyAndConfirm(orderId: string) {
     return { success: true, trackingToken: order.tracking_token, alreadyProcessed: true };
   }
 
-  // 2. Derive the sanitised Cashfree order ID from our internal UUID
-  // (we send UUID-without-hyphens to Cashfree as their order_id)
-  const cfOrderId = orderId.replace(/-/g, "").slice(0, 45);
-
-  // 3. Fetch payments for this order from Cashfree
-  const cfRes = await getCashfreeOrderPayments(cfOrderId);
-  if (cfRes.error || !cfRes.payments) {
-    return { error: cfRes.error || "Failed to verify payments from Cashfree.", status: 400 };
+  // 2. Verify Razorpay Signature if provided
+  if (!razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
+    return { error: "Missing Razorpay verification parameters.", status: 400 };
   }
 
-  const successPayment = cfRes.payments.find((p) => p.payment_status === "SUCCESS");
+  const isValid = verifyRazorpaySignature(
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature
+  );
 
-  if (!successPayment) {
+  if (!isValid) {
     return {
-      error: "Payment not completed or failed.",
-      payments: cfRes.payments,
+      error: "Invalid payment signature.",
       trackingToken: order.tracking_token,
       status: 400,
     };
@@ -48,10 +51,10 @@ async function verifyAndConfirm(orderId: string) {
   await (adminClient as any)
     .from("payments")
     .update({
-      cf_payment_id: successPayment.cf_payment_id,
+      cf_payment_id: razorpayPaymentId, // Storing razorpay payment ID here
       status: "paid",
-      paid_at: successPayment.payment_time || new Date().toISOString(),
-      raw_response: successPayment,
+      paid_at: new Date().toISOString(),
+      raw_response: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
     })
     .eq("order_id", orderId);
 
@@ -70,12 +73,12 @@ async function verifyAndConfirm(orderId: string) {
 // Handler for Client-side verification POST call
 export async function POST(req: NextRequest) {
   try {
-    const { orderId } = await req.json();
+    const { orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature } = await req.json();
     if (!orderId) {
       return NextResponse.json({ error: "Missing orderId." }, { status: 400 });
     }
 
-    const result = await verifyAndConfirm(orderId);
+    const result = await verifyAndConfirm(orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature);
     if (result.error) {
       return NextResponse.json(result, { status: result.status || 400 });
     }
@@ -96,7 +99,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/order?error=missing_order_id", req.url));
   }
 
-  const result = await verifyAndConfirm(orderId);
+  // For GET (webhook/redirect), we don't have signature in url params, so it might fail if we rely on it.
+  // Razorpay usually uses frontend checkout, so GET redirect might not be used the same way as Cashfree.
+  // If it is hit, it will fail signature check unless provided in search params.
+  const razorpayPaymentId = searchParams.get("razorpay_payment_id") || undefined;
+  const razorpayOrderId = searchParams.get("razorpay_order_id") || undefined;
+  const razorpaySignature = searchParams.get("razorpay_signature") || undefined;
+
+  const result = await verifyAndConfirm(orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   if (result.trackingToken) {

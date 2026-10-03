@@ -8,7 +8,7 @@ import { useCart, CartCustomization } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/utils";
 import { ShoppingCart, Plus, Minus, X, UtensilsCrossed, ChevronRight, Loader2, CheckCircle2, Sliders, Package } from "lucide-react";
 
-import { loadCashfreeSDK } from "@/lib/payments/cashfree-client";
+import { loadRazorpaySDK } from "@/lib/payments/razorpay-client";
 
 interface MenuClientProps {
   theatreName: string;
@@ -150,64 +150,76 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
         return;
       }
 
-      // 2. Load Cashfree Checkout SDK
-      const Cashfree = await loadCashfreeSDK();
-      const { orderId, trackingToken } = orderData;
-      if (!orderData.paymentSessionId || !orderId) {
+      // 2. Load Razorpay Checkout SDK
+      const RazorpaySDK = await loadRazorpaySDK();
+      const { orderId, trackingToken, razorpayOrderId, totalAmountPaise } = orderData;
+      if (!razorpayOrderId || !orderId) {
         throw new Error("Invalid payment gateway response.");
       }
 
-      // 3. Trigger Cashfree Checkout Modal (SDK v3 returns a result object — never throws)
-      const cashfreeInstance = Cashfree({
-        mode: orderData.environment || "sandbox",
-      });
-
-      const cfResult = await cashfreeInstance.checkout({
-        paymentSessionId: orderData.paymentSessionId,
-        redirectTarget: "_modal",
-      });
-
-      // SDK v3 result: { error, redirect, paymentDetails }
-      // If user closed the modal or an SDK-level error occurred, bail out
-      if (cfResult?.error) {
-        console.error("Cashfree SDK error:", cfResult.error);
-        setFormError("Payment was cancelled or an error occurred. Please try again.");
-        setStep("details");
-        return;
-      }
-
-      // If payment requires a redirect (in-app browser edge case)
-      if (cfResult?.redirect) {
-        // Customer will complete payment on the return URL — nothing to do here
-        return;
-      }
-
-      setStep("verifying");
-
-      // 4. Verify Payment after modal closes
-      const verifyRes = await fetch("/api/payments/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
-      });
-
-      const verifyData = await verifyRes.json();
-
-      if (verifyData.success) {
-        setOrderToken(trackingToken);
-        try {
-          const key = `order_history_${theatreSlug}`;
-          const stored = JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
-          localStorage.setItem(key, JSON.stringify([trackingToken, ...stored].slice(0, 10)));
-        } catch {
-          // ignore
+      // 3. Trigger Razorpay Checkout Modal
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+        amount: totalAmountPaise,
+        currency: "INR",
+        name: "Veer Cinema Food and Beverages",
+        description: "In-Seat Dining Order",
+        order_id: razorpayOrderId,
+        handler: async function (response: any) {
+          setStep("verifying");
+          // 4. Verify Payment after modal closes
+          try {
+             const verifyRes = await fetch("/api/payments/verify", {
+               method: "POST",
+               headers: { "Content-Type": "application/json" },
+               body: JSON.stringify({ 
+                 orderId,
+                 razorpayPaymentId: response.razorpay_payment_id,
+                 razorpayOrderId: response.razorpay_order_id,
+                 razorpaySignature: response.razorpay_signature
+               }),
+             });
+             const verifyData = await verifyRes.json();
+             if (verifyData.success) {
+               setOrderToken(trackingToken);
+               try {
+                 const key = `order_history_${theatreSlug}`;
+                 const stored = JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
+                 localStorage.setItem(key, JSON.stringify([trackingToken, ...stored].slice(0, 10)));
+               } catch {}
+               cart.clearCart();
+               setStep("success");
+             } else {
+               setFormError(verifyData.error || "Payment verification failed.");
+               setStep("details");
+             }
+          } catch (err) {
+             setFormError("An error occurred during verification.");
+             setStep("details");
+          }
+        },
+        prefill: {
+          name: formData.customerName.trim(),
+          contact: formData.mobile,
+        },
+        theme: {
+          color: "#f59e0b"
+        },
+        modal: {
+          ondismiss: function() {
+            setFormError("Payment was cancelled.");
+            setStep("details");
+          }
         }
-        cart.clearCart();
-        setStep("success");
-      } else {
-        setFormError(verifyData.error || "Payment was not completed. Please try again.");
-        setStep("details");
-      }
+      };
+
+      const rzp = new RazorpaySDK(options);
+      rzp.on('payment.failed', function (response: any) {
+         setFormError(response.error.description || "Payment failed.");
+         setStep("details");
+      });
+      rzp.open();
+
     } catch (err: unknown) {
       console.error("Payment error:", err);
       setFormError(err instanceof Error ? err.message : "An unexpected error occurred during payment.");

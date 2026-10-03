@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { createCashfreeOrder } from "@/lib/payments/cashfree";
+import { createRazorpayOrder } from "@/lib/payments/razorpay";
 import { paiseToRupees } from "@/lib/utils";
 import { randomUUID } from "crypto";
 
@@ -160,21 +160,15 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (adminClient as any).from("order_items").insert(itemsWithOrderId);
 
-    // 3. Create Cashfree Order
-
-    const orderAmountRupees = paiseToRupees(totalAmount);
-
-    const cfRes = await createCashfreeOrder({
+    // 3. Create Razorpay Order
+    const rzRes = await createRazorpayOrder({
       orderId: orderId,
-      orderAmountRupees,
-      customerName,
-      customerPhone: mobile,
-      returnUrl: `https://webhook.site/dummy-return-url?order_id=${orderId}`,
+      amountPaise: totalAmount,
     });
 
-    if (cfRes.error || !cfRes.data) {
+    if (rzRes.error || !rzRes.data) {
       return NextResponse.json(
-        { error: cfRes.error || "Failed to initialize payment gateway." },
+        { error: rzRes.error || "Failed to initialize payment gateway." },
         { status: 500 }
       );
     }
@@ -183,9 +177,9 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (adminClient as any).from("payments").insert({
       order_id: orderId,
-      gateway: "cashfree",
-      cf_order_id: cfRes.data.cf_order_id,
-      payment_session_id: cfRes.data.payment_session_id,
+      gateway: "razorpay",
+      cf_order_id: rzRes.data.id, // Store razorpay order ID in cf_order_id column
+      payment_session_id: null,
       amount: totalAmount,
       currency: "INR",
       status: "created",
@@ -194,9 +188,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       orderId,
       trackingToken,
-      paymentSessionId: cfRes.data.payment_session_id,
+      razorpayOrderId: rzRes.data.id,
       totalAmountPaise: totalAmount,
-      environment: process.env.CASHFREE_ENV || "sandbox",
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal Server Error";

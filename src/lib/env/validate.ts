@@ -27,9 +27,9 @@ export function validateEnvironment(): void {
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
-    // Cashfree is required for payments
-    "CASHFREE_APP_ID",
-    "CASHFREE_SECRET_KEY",
+    // Razorpay is required for payments
+    "RAZORPAY_KEY_ID",
+    "RAZORPAY_KEY_SECRET",
   ];
   for (const key of required) {
     if (!process.env[key]) {
@@ -39,7 +39,7 @@ export function validateEnvironment(): void {
 
   // ── Production guards ──────────────────────────────────────────────────────
   if (isProd) {
-    const cashfreeAppId = process.env.CASHFREE_APP_ID ?? "";
+    const razorpayAppId = process.env.RAZORPAY_KEY_ID ?? "";
 
     // Removed strict guard: allow TEST keys on Vercel for sandbox testing
 
@@ -54,12 +54,12 @@ export function validateEnvironment(): void {
 
   // ── Development guards ─────────────────────────────────────────────────────
   if (isDev) {
-    const cashfreeAppId = process.env.CASHFREE_APP_ID ?? "";
+    const razorpayAppId = process.env.RAZORPAY_KEY_ID ?? "";
 
-    // Warn if live Cashfree key used in development
-    if (!cashfreeAppId.startsWith("TEST") && cashfreeAppId.length > 0) {
+    // Warn if live Razorpay key used in development
+    if (razorpayAppId.startsWith("rzp_live")) {
       errors.push(
-        "FATAL: Cashfree LIVE key detected in DEVELOPMENT. " +
+        "FATAL: Razorpay LIVE key detected in DEVELOPMENT. " +
         "Use a TEST key locally."
       );
     }
