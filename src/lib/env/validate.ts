@@ -28,7 +28,7 @@ export function validateEnvironment(): void {
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
     // Razorpay is required for payments
-    "RAZORPAY_KEY_ID",
+    "NEXT_PUBLIC_RAZORPAY_KEY_ID",
     "RAZORPAY_KEY_SECRET",
   ];
   for (const key of required) {
@@ -39,7 +39,7 @@ export function validateEnvironment(): void {
 
   // ── Production guards ──────────────────────────────────────────────────────
   if (isProd) {
-    const razorpayAppId = process.env.RAZORPAY_KEY_ID ?? "";
+    const razorpayAppId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
 
     // Removed strict guard: allow TEST keys on Vercel for sandbox testing
 
@@ -54,7 +54,7 @@ export function validateEnvironment(): void {
 
   // ── Development guards ─────────────────────────────────────────────────────
   if (isDev) {
-    const razorpayAppId = process.env.RAZORPAY_KEY_ID ?? "";
+    const razorpayAppId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
 
     // Warn if live Razorpay key used in development
     if (razorpayAppId.startsWith("rzp_live")) {
