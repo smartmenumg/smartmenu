@@ -125,7 +125,7 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
     setStep("placing");
 
     try {
-      // 1. Create order & Cashfree session
+      // 1. Create order & Razorpay session
       const createRes = await fetch("/api/payments/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

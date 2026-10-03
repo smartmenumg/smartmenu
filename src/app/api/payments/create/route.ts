@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
     await (adminClient as any).from("payments").insert({
       order_id: orderId,
       gateway: "razorpay",
-      cf_order_id: rzRes.data.id, // Store razorpay order ID in cf_order_id column
+      gateway_order_id: rzRes.data.id,
       payment_session_id: null,
       amount: totalAmount,
       currency: "INR",

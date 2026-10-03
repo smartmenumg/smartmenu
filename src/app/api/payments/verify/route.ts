@@ -51,7 +51,7 @@ async function verifyAndConfirm(
   await (adminClient as any)
     .from("payments")
     .update({
-      cf_payment_id: razorpayPaymentId, // Storing razorpay payment ID here
+      gateway_payment_id: razorpayPaymentId,
       status: "paid",
       paid_at: new Date().toISOString(),
       raw_response: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
@@ -90,30 +90,5 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Handler for Cashfree Return URL browser redirect (GET)
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const orderId = searchParams.get("order_id");
-
-  if (!orderId) {
-    return NextResponse.redirect(new URL("/order?error=missing_order_id", req.url));
-  }
-
-  // For GET (webhook/redirect), we don't have signature in url params, so it might fail if we rely on it.
-  // Razorpay usually uses frontend checkout, so GET redirect might not be used the same way as Cashfree.
-  // If it is hit, it will fail signature check unless provided in search params.
-  const razorpayPaymentId = searchParams.get("razorpay_payment_id") || undefined;
-  const razorpayOrderId = searchParams.get("razorpay_order_id") || undefined;
-  const razorpaySignature = searchParams.get("razorpay_signature") || undefined;
-
-  const result = await verifyAndConfirm(orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-  if (result.trackingToken) {
-    return NextResponse.redirect(
-      new URL(`/track/${result.trackingToken}?payment=${result.success ? "success" : "failed"}`, appUrl)
-    );
-  }
-
-  return NextResponse.redirect(new URL("/order?error=payment_failed", appUrl));
-}
+// NOTE: GET handler removed — Razorpay uses client-side modal, not server-side redirects.
+// All payment verification goes through the POST handler above.
