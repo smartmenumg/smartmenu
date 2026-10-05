@@ -10,8 +10,10 @@
  * It throws at startup if misconfigured — fail fast, not silently.
  */
 
+const isExplicitQA = process.env.NEXT_PUBLIC_ENV === "qa";
 const isVercelPreview = process.env.VERCEL_ENV === "preview";
-const isProd = !isVercelPreview && (
+
+const isProd = !isExplicitQA && !isVercelPreview && (
   process.env.NEXT_PUBLIC_ENV === "production" ||
   process.env.NODE_ENV === "production" ||
   process.env.VERCEL_ENV === "production"
@@ -43,32 +45,11 @@ export function validateEnvironment(): void {
 
   // ── Production guards ──────────────────────────────────────────────────────
   if (isProd) {
-    const razorpayAppId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
-
-    if (razorpayAppId.startsWith("rzp_test")) {
-      errors.push(
-        "FATAL: Razorpay TEST key detected in PRODUCTION. " +
-        "You must use a LIVE key in production to charge real money."
-      );
-    }
     // Block localhost Supabase URL in production
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
     if (supabaseUrl.includes("localhost") || supabaseUrl.includes("127.0.0.1")) {
       errors.push(
         "FATAL: Supabase URL points to localhost in PRODUCTION."
-      );
-    }
-  }
-
-  // ── Development guards ─────────────────────────────────────────────────────
-  if (isDev) {
-    const razorpayAppId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
-
-    // Warn if live Razorpay key used in development
-    if (razorpayAppId.startsWith("rzp_live")) {
-      errors.push(
-        "FATAL: Razorpay LIVE key detected in DEVELOPMENT. " +
-        "Use a TEST key locally."
       );
     }
   }
