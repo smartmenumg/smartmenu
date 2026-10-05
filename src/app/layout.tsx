@@ -19,10 +19,10 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "Veer Cinema Food and Beverages — In-Seat Dining by Mahavir Group",
-    template: "%s | Veer Cinema Food and Beverages",
+    default: "Veer Entertainment Private Limited — In-Seat Dining by Mahavir Group",
+    template: "%s | Veer Entertainment Private Limited",
   },
-  description: "Order premium food and beverages directly to your cinema seat. Veer Cinema Food and Beverages by Mahavir Group — Experience. Quality. Trust.",
+  description: "Order premium food and beverages directly to your cinema seat. Veer Entertainment Private Limited by Mahavir Group — Experience. Quality. Trust.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
   ),

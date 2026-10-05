@@ -366,16 +366,7 @@ export function AdminOrdersClient({
                   <div className="px-3 py-2 border-b border-slate-100 flex flex-col">
                     <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Account</span>
                   </div>
-                  
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors text-left">
-                    <UserIcon className="w-4 h-4 text-slate-400" />
-                    Profile
-                  </button>
-                  
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors text-left">
-                    <Lock className="w-4 h-4 text-slate-400" />
-                    Change Password
-                  </button>
+
                   
                   <button
                     onClick={() => { playChime(); setShowDropdown(false); }}

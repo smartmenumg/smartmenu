@@ -57,7 +57,7 @@ export function useRealtimeOrders({
         event: "INSERT",
         schema: "public",
         table: "orders",
-        filter: `theatre_id=eq.${theatreId}`,
+        ...(theatreId !== "all" ? { filter: `theatre_id=eq.${theatreId}` } : {}),
       }, async (payload) => {
         const row = payload.new as Record<string, unknown>;
         if (row.status === "confirmed") {
@@ -73,7 +73,7 @@ export function useRealtimeOrders({
         event: "UPDATE",
         schema: "public",
         table: "orders",
-        filter: `theatre_id=eq.${theatreId}`,
+        ...(theatreId !== "all" ? { filter: `theatre_id=eq.${theatreId}` } : {}),
       }, async (payload) => {
         const row = payload.new as Record<string, unknown>;
         const status = row.status as OrderStatus;

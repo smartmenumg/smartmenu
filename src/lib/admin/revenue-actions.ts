@@ -68,8 +68,8 @@ export async function getOrderHistory(
     .from("orders")
     .select("*, auditoriums(id,name), order_items(*), payments!inner(*)")
     .eq("payments.status", "paid")
-    .gte("created_at", startUTC.toISOString())
-    .lte("created_at", endUTC.toISOString())
+    .gte("payments.paid_at", startUTC.toISOString())
+    .lte("payments.paid_at", endUTC.toISOString())
     .order("created_at", { ascending: false });
 
   // Filter by theatre: null means "All Theatres" (super_admin only)
@@ -94,7 +94,8 @@ export async function getOrderHistory(
       totalOrders++;
       totalRevenue += o.total_amount;
       totalGst += o.gst_amount ?? 0;
-      const ist = new Date(new Date(o.created_at).getTime() + IST_MS);
+      const paymentDate = o.payments?.[0]?.paid_at ?? o.created_at;
+      const ist = new Date(new Date(paymentDate).getTime() + IST_MS);
       
       let key: string;
       if (groupByMonth) {

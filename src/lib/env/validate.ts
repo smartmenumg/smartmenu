@@ -41,8 +41,12 @@ export function validateEnvironment(): void {
   if (isProd) {
     const razorpayAppId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? "";
 
-    // Removed strict guard: allow TEST keys on Vercel for sandbox testing
-
+    if (razorpayAppId.startsWith("rzp_test")) {
+      errors.push(
+        "FATAL: Razorpay TEST key detected in PRODUCTION. " +
+        "You must use a LIVE key in production to charge real money."
+      );
+    }
     // Block localhost Supabase URL in production
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
     if (supabaseUrl.includes("localhost") || supabaseUrl.includes("127.0.0.1")) {

@@ -32,6 +32,7 @@ interface TrackingOrder {
   status: OrderStatus;
   created_at: string;
   auditoriums?: { name: string };
+  theatres?: { slug: string; name: string };
   order_items?: OrderItem[];
 }
 
@@ -210,6 +211,15 @@ export function TrackOrderClient({ initialOrder, theatreSlug }: { initialOrder: 
             })}
           </div>
         )}
+
+        {/* Seller info */}
+        <div className="rounded-2xl p-4 flex flex-col gap-1" style={{ background: "#0f0f0f", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-1">Seller / Service Provider</p>
+          <p className="text-sm text-white/80">Veer Entertainment Private Limited</p>
+          {initialOrder.theatres?.name && (
+            <p className="text-xs text-white/40 mt-0.5">{initialOrder.theatres.name}</p>
+          )}
+        </div>
 
         {/* Delivery info */}
         <div className="rounded-2xl p-4 flex items-center gap-4" style={{ background: "#0f0f0f", border: "1px solid rgba(255,255,255,0.06)" }}>

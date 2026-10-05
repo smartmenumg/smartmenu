@@ -162,8 +162,8 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
         amount: totalAmountPaise,
         currency: "INR",
-        name: "Veer Cinema Food and Beverages",
-        description: "In-Seat Dining Order",
+        name: "Veer Entertainment Private Limited",
+        description: `Food & Beverages - ${theatreName}`,
         order_id: razorpayOrderId,
         handler: async function (response: any) {
           setStep("verifying");
@@ -238,7 +238,7 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
             </div>
             <div>
               <p className="font-display font-semibold text-white text-base leading-none tracking-tight">{theatreName}</p>
-              <p className="text-[10px] text-amber-500/60 font-medium tracking-[0.2em] uppercase mt-0.5">Menu</p>
+              <p className="text-[10px] text-amber-500/60 font-medium tracking-[0.05em] mt-0.5">Operated by Veer Entertainment Private Limited</p>
             </div>
           </div>
 
@@ -442,6 +442,7 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
                 cart={cart}
                 onClose={() => setCartOpen(false)}
                 onCheckout={() => setStep("details")}
+                theatreName={theatreName}
               />
             )}
             {step === "details" && (
@@ -454,6 +455,7 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
                 onBack={() => setStep("menu")}
                 onSubmit={handlePlaceOrder}
                 isQrScan={isQrScan}
+                theatreName={theatreName}
               />
             )}
             {step === "placing" && (
@@ -476,6 +478,7 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
                   setStep("menu");
                   setOrderToken(null);
                 }}
+                theatreName={theatreName}
               />
             )}
           </div>
@@ -621,6 +624,7 @@ function CartView({
   cart: ReturnType<typeof useCart>;
   onClose: () => void;
   onCheckout: () => void;
+  theatreName: string;
 }) {
   return (
     <>
@@ -689,6 +693,11 @@ function CartView({
 
       {cart.items.length > 0 && (
         <div className="p-4 border-t border-white/[0.07] space-y-3" style={{background:"rgba(12,12,12,0.97)"}}>
+          <div className="rounded-xl border border-white/5 p-3 mb-3 bg-white/[0.02]">
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Seller / Service Provider</p>
+            <p className="text-sm text-slate-200">Veer Entertainment Private Limited</p>
+            <p className="text-xs text-slate-400 mt-0.5">{theatreName}</p>
+          </div>
           <div className="space-y-1.5 text-sm">
             <div className="flex items-center justify-between text-slate-400">
               <span>Subtotal</span>
@@ -737,6 +746,7 @@ function CheckoutForm({
   onSubmit: () => void;
   /** When true, auditorium and seat were pre-filled from a QR scan and should be locked */
   isQrScan?: boolean;
+  theatreName: string;
 }) {
   const set = (key: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFormData((prev) => ({ ...prev, [key]: e.target.value }));
@@ -820,6 +830,11 @@ function CheckoutForm({
 
         {/* Order summary */}
         <div className="rounded-xl bg-slate-800/60 border border-slate-700/50 p-4 space-y-2">
+          <div className="mb-4 pb-3 border-b border-slate-700/50">
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Seller / Service Provider</p>
+            <p className="text-sm text-slate-200">Veer Entertainment Private Limited</p>
+            <p className="text-xs text-slate-400 mt-0.5">{theatreName}</p>
+          </div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Order Summary</p>
           {cart.items.map((item) => (
             <div key={item.cartItemId} className="flex justify-between text-sm py-1 border-b border-slate-800/60 last:border-0">
@@ -867,7 +882,7 @@ function CheckoutForm({
 
 // ─── SuccessView ──────────────────────────────────────────────────────────────
 
-function SuccessView({ token, onClose }: { token: string; onClose: () => void }) {
+function SuccessView({ token, onClose, theatreName }: { token: string; onClose: () => void; theatreName: string; }) {
   return (
     <div className="flex flex-col items-center justify-center gap-5 p-8 text-center flex-1">
       <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
@@ -878,6 +893,11 @@ function SuccessView({ token, onClose }: { token: string; onClose: () => void })
         <p className="text-slate-400 text-sm mt-1">We&apos;ve received your order. Our team will deliver it directly to your seat.</p>
       </div>
       <div className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-left">
+        <div className="mb-3 pb-3 border-b border-slate-700/50">
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Seller / Service Provider</p>
+          <p className="text-sm text-slate-200">Veer Entertainment Private Limited</p>
+          <p className="text-xs text-slate-400 mt-0.5">{theatreName}</p>
+        </div>
         <p className="text-xs text-slate-500 mb-1">Tracking ID</p>
         <p className="font-mono text-sm text-amber-400 break-all">{token.slice(0, 8).toUpperCase()}</p>
       </div>

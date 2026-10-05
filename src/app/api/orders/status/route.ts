@@ -10,11 +10,11 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (admin as any)
     .from("orders")
-    .select("id, status, updated_at")
+    .select("status, updated_at")
     .eq("tracking_token", token)
     .single();
 
   if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json({ id: data.id, status: data.status, updated_at: data.updated_at });
+  return NextResponse.json({ status: data.status, updated_at: data.updated_at });
 }

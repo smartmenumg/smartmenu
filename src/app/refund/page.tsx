@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Refund & Cancellation Policy — Veer Cinema Food and Beverages by Mahavir Group",
+  title: "Refund & Cancellation Policy — Veer Entertainment Private Limited by Mahavir Group",
 };
 
 export default function RefundPage() {
@@ -33,7 +33,7 @@ export default function RefundPage() {
           <div className="space-y-8 text-[#555] text-sm leading-relaxed">
             <section>
               <h2 className="text-base font-semibold text-[#0f2336] mb-3">1. Order Cancellations</h2>
-              <p className="mb-2">Once an order is placed and payment is confirmed through Veer Cinema Food and Beverages, the order is immediately dispatched to the kitchen for preparation. <strong className="text-[#0f2336]">Orders cannot be cancelled once confirmed.</strong></p>
+              <p className="mb-2">Once an order is placed and payment is confirmed through Veer Entertainment Private Limited, the order is immediately dispatched to the kitchen for preparation. <strong className="text-[#0f2336]">Orders cannot be cancelled once confirmed.</strong></p>
               <p>If you wish to cancel an order before payment is completed, you may simply abandon the checkout process. No charges will be applied to abandoned orders.</p>
             </section>
 

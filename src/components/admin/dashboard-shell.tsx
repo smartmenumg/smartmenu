@@ -117,7 +117,7 @@ export function DashboardShell({ profile, children, theatres, activeTheatreId, a
           <UtensilsCrossed className="w-4 h-4 text-black" />
         </div>
         <div className="min-w-0">
-          <p className="font-display font-semibold text-white text-sm tracking-tight truncate">Veer Cinema Food and Beverages</p>
+          <p className="font-display font-semibold text-white text-sm tracking-tight truncate">Veer Entertainment Private Limited</p>
           <p className="text-[10px] text-white/35 tracking-widest uppercase truncate">Admin Portal</p>
         </div>
       </div>
@@ -203,7 +203,7 @@ export function DashboardShell({ profile, children, theatres, activeTheatreId, a
             <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>
               <UtensilsCrossed className="w-3.5 h-3.5 text-black" />
             </div>
-            <span className="font-display font-semibold text-sm text-white tracking-tight">Veer Cinema Food and Beverages</span>
+            <span className="font-display font-semibold text-sm text-white tracking-tight">Veer Entertainment Private Limited</span>
           </div>
         </header>
 

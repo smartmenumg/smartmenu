@@ -6,7 +6,7 @@ import { getEffectiveTheatreId } from "@/lib/theatre-context";
 import type { AuditLog } from "@/types/database";
 
 export interface AuditLogWithUser extends AuditLog {
-  profiles: { full_name: string | null } | null;
+  profiles: { full_name: string | null; theatre_id?: string } | null;
 }
 
 export async function getAuditLogs(): Promise<AuditLogWithUser[]> {
@@ -44,22 +44,30 @@ export async function getAuditLogs(): Promise<AuditLogWithUser[]> {
   if (userIds.length > 0) {
     const { data: profiles } = await adminAny
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, theatre_id")
       .in("id", userIds);
       
     if (profiles) {
-      profilesMap = (profiles as { id: string; full_name: string | null }[]).reduce((acc, p) => {
-        acc[p.id] = { full_name: p.full_name };
+      profilesMap = (profiles as { id: string; full_name: string | null; theatre_id: string }[]).reduce((acc, p) => {
+        acc[p.id] = { full_name: p.full_name, theatre_id: p.theatre_id };
         return acc;
-      }, {} as Record<string, { full_name: string | null }>);
+      }, {} as Record<string, { full_name: string | null; theatre_id: string }>);
     }
   }
 
-  // Map them together
-  const enhancedLogs = (logs as AuditLog[]).map(log => ({
+  let enhancedLogs = (logs as AuditLog[]).map(log => ({
     ...log,
     profiles: log.user_id ? profilesMap[log.user_id] || null : null
   }));
+
+  if (effectiveTheatreId) {
+    enhancedLogs = enhancedLogs.filter(log => {
+      // Filter by the user's theatre if available. 
+      // This is a best-effort filter since audit_logs doesn't store theatre_id directly.
+      const userTheatreId = log.user_id ? profilesMap[log.user_id]?.theatre_id : null;
+      return userTheatreId === effectiveTheatreId;
+    });
+  }
 
   return enhancedLogs as unknown as AuditLogWithUser[];
 }
