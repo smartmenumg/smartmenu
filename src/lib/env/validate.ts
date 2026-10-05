@@ -10,8 +10,12 @@
  * It throws at startup if misconfigured — fail fast, not silently.
  */
 
-const isProd = process.env.NEXT_PUBLIC_ENV === "production" ||
-               process.env.NODE_ENV === "production";
+const isVercelPreview = process.env.VERCEL_ENV === "preview";
+const isProd = !isVercelPreview && (
+  process.env.NEXT_PUBLIC_ENV === "production" ||
+  process.env.NODE_ENV === "production" ||
+  process.env.VERCEL_ENV === "production"
+);
 
 const isDev = !isProd;
 
