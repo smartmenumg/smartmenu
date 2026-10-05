@@ -620,6 +620,7 @@ function CartView({
   cart,
   onClose,
   onCheckout,
+  theatreName,
 }: {
   cart: ReturnType<typeof useCart>;
   onClose: () => void;
@@ -736,6 +737,7 @@ function CheckoutForm({
   onBack,
   onSubmit,
   isQrScan,
+  theatreName,
 }: {
   cart: ReturnType<typeof useCart>;
   auditoriums: PublicAuditorium[];

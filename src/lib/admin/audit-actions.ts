@@ -40,7 +40,7 @@ export async function getAuditLogs(): Promise<AuditLogWithUser[]> {
   // Fetch unique profiles for these logs
   const userIds = [...new Set((logs as AuditLog[]).map(l => l.user_id).filter(Boolean))] as string[];
   
-  let profilesMap: Record<string, { full_name: string | null }> = {};
+  let profilesMap: Record<string, { full_name: string | null; theatre_id?: string }> = {};
   if (userIds.length > 0) {
     const { data: profiles } = await adminAny
       .from("profiles")
