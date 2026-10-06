@@ -312,8 +312,14 @@ export function QRManagerClient({
         ctx.textBaseline = "top";
 
         // Add full canvas as single image to PDF page
-        const pageImg = canvas.toDataURL("image/png");
-        pdf.addImage(pageImg, "PNG", 0, 0, W_MM, H_MM);
+        // Use JPEG compression (0.75) to prevent browser Out-Of-Memory (OOM) crashes on 300+ seat screens
+        const pageImg = canvas.toDataURL("image/jpeg", 0.75);
+        pdf.addImage(pageImg, "JPEG", 0, 0, W_MM, H_MM);
+
+        // Yield to browser main thread every 10 pages to prevent UI freeze and memory panics
+        if (i > 0 && i % 10 === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
       }
 
       const safeT = (theatreName || "Theatre").replace(/\s+/g, "_");
