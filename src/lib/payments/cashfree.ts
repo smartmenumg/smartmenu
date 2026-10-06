@@ -1,4 +1,4 @@
-import { Cashfree } from "cashfree-pg";
+import { Cashfree, CFEnvironment } from "cashfree-pg";
 
 export interface CreateCashfreeOrderParams {
   orderId: string;
@@ -17,10 +17,10 @@ export function initCashfree() {
   
   if (process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION") {
     // @ts-ignore
-    Cashfree.XEnvironment = Cashfree.Environment.PRODUCTION;
+    Cashfree.XEnvironment = CFEnvironment.PRODUCTION;
   } else {
     // @ts-ignore
-    Cashfree.XEnvironment = Cashfree.Environment.SANDBOX;
+    Cashfree.XEnvironment = CFEnvironment.SANDBOX;
   }
 }
 
