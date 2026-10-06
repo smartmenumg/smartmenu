@@ -150,22 +150,31 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
         return;
       }
 
-      // 2. Load Razorpay Checkout SDK
-      const RazorpaySDK = await loadRazorpaySDK();
-      const { orderId, trackingToken, razorpayOrderId, totalAmountPaise } = orderData;
-      if (!razorpayOrderId || !orderId) {
+      // 2. Load Cashfree Checkout SDK
+      const { load } = await import("@cashfreepayments/cashfree-js");
+      const cashfree = await load({
+        mode: process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION" ? "production" : "sandbox",
+      });
+
+      const { orderId, trackingToken, paymentSessionId } = orderData;
+      if (!paymentSessionId || !orderId) {
         throw new Error("Invalid payment gateway response.");
       }
 
-      // 3. Trigger Razorpay Checkout Modal
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
-        amount: totalAmountPaise,
-        currency: "INR",
-        name: "Veer Entertainment Private Limited",
-        description: `Food & Beverages - ${theatreName}`,
-        order_id: razorpayOrderId,
-        handler: async function (response: any) {
+      // 3. Trigger Cashfree Checkout Modal
+      const checkoutOptions = {
+        paymentSessionId: paymentSessionId,
+        redirectTarget: "_modal",
+      };
+
+      cashfree.checkout(checkoutOptions).then(async (result: any) => {
+        if (result.error) {
+          setFormError(result.error.message || "Payment cancelled or failed.");
+          setStep("details");
+          return;
+        }
+        
+        if (result.paymentDetails || result.redirect) {
           setStep("verifying");
           // 4. Verify Payment after modal closes
           try {
@@ -174,9 +183,6 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
                headers: { "Content-Type": "application/json" },
                body: JSON.stringify({ 
                  orderId,
-                 razorpayPaymentId: response.razorpay_payment_id,
-                 razorpayOrderId: response.razorpay_order_id,
-                 razorpaySignature: response.razorpay_signature
                }),
              });
              const verifyData = await verifyRes.json();
@@ -197,28 +203,8 @@ export function MenuClient({ theatreName, theatreId, theatreSlug, categories, pr
              setFormError("An error occurred during verification.");
              setStep("details");
           }
-        },
-        prefill: {
-          name: formData.customerName.trim(),
-          contact: formData.mobile,
-        },
-        theme: {
-          color: "#f59e0b"
-        },
-        modal: {
-          ondismiss: function() {
-            setFormError("Payment was cancelled.");
-            setStep("details");
-          }
         }
-      };
-
-      const rzp = new RazorpaySDK(options);
-      rzp.on('payment.failed', function (response: any) {
-         setFormError(response.error.description || "Payment failed.");
-         setStep("details");
       });
-      rzp.open();
 
     } catch (err: unknown) {
       console.error("Payment error:", err);

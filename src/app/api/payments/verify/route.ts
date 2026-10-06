@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { verifyRazorpaySignature } from "@/lib/payments/razorpay";
+import { verifyCashfreePayment } from "@/lib/payments/cashfree";
 
-async function verifyAndConfirm(
-  orderId: string,
-  razorpayPaymentId?: string,
-  razorpayOrderId?: string,
-  razorpaySignature?: string
-) {
+async function verifyAndConfirm(orderId: string) {
   const adminClient = await createAdminClient();
 
   // 1. Fetch order details
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: order, error: orderError } = await (adminClient as any)
     .from("orders")
-    .select("id, tracking_token, status, total_amount")
+    .select("id, tracking_token, status")
     .eq("id", orderId)
     .single();
 
@@ -27,20 +22,23 @@ async function verifyAndConfirm(
     return { success: true, trackingToken: order.tracking_token, alreadyProcessed: true };
   }
 
-  // 2. Verify Razorpay Signature if provided
-  if (!razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
-    return { error: "Missing Razorpay verification parameters.", status: 400 };
+  // 2. Fetch from payments table to get gateway_order_id
+  const { data: payment } = await (adminClient as any)
+    .from("payments")
+    .select("gateway_order_id")
+    .eq("order_id", orderId)
+    .single();
+
+  if (!payment || !payment.gateway_order_id) {
+     return { error: "Payment record not found.", status: 404 };
   }
 
-  const isValid = verifyRazorpaySignature(
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature
-  );
+  // 3. Verify Cashfree Payment via API
+  const isValid = await verifyCashfreePayment(payment.gateway_order_id);
 
   if (!isValid) {
     return {
-      error: "Invalid payment signature.",
+      error: "Payment has not been completed successfully.",
       trackingToken: order.tracking_token,
       status: 400,
     };
@@ -51,10 +49,8 @@ async function verifyAndConfirm(
   await (adminClient as any)
     .from("payments")
     .update({
-      gateway_payment_id: razorpayPaymentId,
       status: "paid",
       paid_at: new Date().toISOString(),
-      raw_response: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
     })
     .eq("order_id", orderId);
 
@@ -73,12 +69,12 @@ async function verifyAndConfirm(
 // Handler for Client-side verification POST call
 export async function POST(req: NextRequest) {
   try {
-    const { orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature } = await req.json();
+    const { orderId } = await req.json();
     if (!orderId) {
       return NextResponse.json({ error: "Missing orderId." }, { status: 400 });
     }
 
-    const result = await verifyAndConfirm(orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature);
+    const result = await verifyAndConfirm(orderId);
     if (result.error) {
       return NextResponse.json(result, { status: result.status || 400 });
     }
@@ -89,6 +85,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
-// NOTE: GET handler removed — Razorpay uses client-side modal, not server-side redirects.
-// All payment verification goes through the POST handler above.

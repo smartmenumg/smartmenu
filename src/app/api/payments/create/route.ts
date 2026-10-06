@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { createRazorpayOrder } from "@/lib/payments/razorpay";
+import { createCashfreeOrder } from "@/lib/payments/cashfree";
 import { paiseToRupees } from "@/lib/utils";
 import { randomUUID } from "crypto";
 
@@ -160,15 +160,16 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (adminClient as any).from("order_items").insert(itemsWithOrderId);
 
-    // 3. Create Razorpay Order
-    const rzRes = await createRazorpayOrder({
+    // 3. Create Cashfree Order
+    const cfRes = await createCashfreeOrder({
       orderId: orderId,
-      amountPaise: totalAmount,
+      amountInr: totalAmount / 100, // Cashfree uses INR, not paise
+      customerPhone: "9999999999", // TODO: replace with actual customer details if needed
     });
 
-    if (rzRes.error || !rzRes.data) {
+    if (cfRes.error || !cfRes.data) {
       return NextResponse.json(
-        { error: rzRes.error || "Failed to initialize payment gateway." },
+        { error: cfRes.error || "Failed to initialize payment gateway." },
         { status: 500 }
       );
     }
@@ -177,10 +178,10 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (adminClient as any).from("payments").insert({
       order_id: orderId,
-      gateway: "razorpay",
-      gateway_order_id: rzRes.data.id,
-      payment_session_id: null,
-      amount: totalAmount,
+      gateway: "cashfree",
+      gateway_order_id: cfRes.data.order_id,
+      payment_session_id: cfRes.data.payment_session_id,
+      amount: totalAmount, // saving as paise in our db to match previous logic
       currency: "INR",
       status: "created",
     });
@@ -188,7 +189,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       orderId,
       trackingToken,
-      razorpayOrderId: rzRes.data.id,
+      paymentSessionId: cfRes.data.payment_session_id,
+      cashfreeOrderId: cfRes.data.order_id,
       totalAmountPaise: totalAmount,
     });
   } catch (err: unknown) {

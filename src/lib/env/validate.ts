@@ -33,9 +33,10 @@ export function validateEnvironment(): void {
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
-    // Razorpay is required for payments
-    "NEXT_PUBLIC_RAZORPAY_KEY_ID",
-    "RAZORPAY_KEY_SECRET",
+    // Cashfree is required for payments
+    "CASHFREE_APP_ID",
+    "CASHFREE_SECRET_KEY",
+    "NEXT_PUBLIC_CASHFREE_ENVIRONMENT", // "SANDBOX" or "PRODUCTION"
   ];
   for (const key of required) {
     if (!process.env[key]) {
