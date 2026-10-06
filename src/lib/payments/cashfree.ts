@@ -9,22 +9,21 @@ export interface CreateCashfreeOrderParams {
   vendorId?: string; // Add this when you're ready for Easy Split!
 }
 
-// Create an instance of Cashfree SDK
-const cf = new Cashfree();
+// We will lazily instantiate it in initCashfree
+let cf: Cashfree;
 
 export function initCashfree() {
-  // @ts-ignore
-  cf.XClientId = process.env.CASHFREE_APP_ID || "";
-  // @ts-ignore
-  cf.XClientSecret = process.env.CASHFREE_SECRET_KEY || "";
-  
-  if (process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION") {
-    // @ts-ignore
-    cf.XEnvironment = CFEnvironment.PRODUCTION;
-  } else {
-    // @ts-ignore
-    cf.XEnvironment = CFEnvironment.SANDBOX;
-  }
+  if (cf) return; // already initialized
+
+  const env = process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION" 
+    ? CFEnvironment.PRODUCTION 
+    : CFEnvironment.SANDBOX;
+
+  cf = new Cashfree(
+    env,
+    process.env.CASHFREE_APP_ID || "",
+    process.env.CASHFREE_SECRET_KEY || ""
+  );
 }
 
 export async function createCashfreeOrder(params: CreateCashfreeOrderParams) {
