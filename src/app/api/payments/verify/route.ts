@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { verifyCashfreePayment } from "@/lib/payments/cashfree";
 
-async function verifyAndConfirm(orderId: string) {
+export async function verifyAndConfirm(orderId: string) {
   const adminClient = await createAdminClient();
 
   // 1. Fetch order details

@@ -67,9 +67,10 @@ export async function getOrderHistory(
   let query = admin
     .from("orders")
     .select("*, auditoriums(id,name), order_items(*), payments!inner(*)")
+    .neq("status", "pending_payment")
     .eq("payments.status", "paid")
-    .gte("payments.paid_at", startUTC.toISOString())
-    .lte("payments.paid_at", endUTC.toISOString())
+    .gte("created_at", startUTC.toISOString())
+    .lte("created_at", endUTC.toISOString())
     .order("created_at", { ascending: false });
 
   // Filter by theatre: null means "All Theatres" (super_admin only)
