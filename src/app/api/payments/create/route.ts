@@ -179,7 +179,7 @@ export async function POST(req: NextRequest) {
     await (adminClient as any).from("payments").insert({
       order_id: orderId,
       gateway: "cashfree",
-      gateway_order_id: cfRes.data.order_id,
+      cf_order_id: cfRes.data.order_id,
       payment_session_id: cfRes.data.payment_session_id,
       amount: totalAmount, // saving as paise in our db to match previous logic
       currency: "INR",

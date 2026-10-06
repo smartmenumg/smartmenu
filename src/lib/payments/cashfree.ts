@@ -14,10 +14,14 @@ export function initCashfree() {
   Cashfree.XClientId = process.env.CASHFREE_APP_ID || "";
   // @ts-ignore
   Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY || "";
-  // @ts-ignore
-  Cashfree.XEnvironment = process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION" 
-    ? Cashfree.Environment.PRODUCTION 
-    : Cashfree.Environment.SANDBOX;
+  
+  if (process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION") {
+    // @ts-ignore
+    Cashfree.XEnvironment = Cashfree.Environment.PRODUCTION;
+  } else {
+    // @ts-ignore
+    Cashfree.XEnvironment = Cashfree.Environment.SANDBOX;
+  }
 }
 
 export async function createCashfreeOrder(params: CreateCashfreeOrderParams) {

@@ -22,19 +22,19 @@ async function verifyAndConfirm(orderId: string) {
     return { success: true, trackingToken: order.tracking_token, alreadyProcessed: true };
   }
 
-  // 2. Fetch from payments table to get gateway_order_id
+  // 2. Fetch from payments table to get cf_order_id
   const { data: payment } = await (adminClient as any)
     .from("payments")
-    .select("gateway_order_id")
+    .select("cf_order_id")
     .eq("order_id", orderId)
     .single();
 
-  if (!payment || !payment.gateway_order_id) {
+  if (!payment || !payment.cf_order_id) {
      return { error: "Payment record not found.", status: 404 };
   }
 
   // 3. Verify Cashfree Payment via API
-  const isValid = await verifyCashfreePayment(payment.gateway_order_id);
+  const isValid = await verifyCashfreePayment(payment.cf_order_id);
 
   if (!isValid) {
     return {
