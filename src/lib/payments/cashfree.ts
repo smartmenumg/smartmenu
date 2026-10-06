@@ -9,18 +9,21 @@ export interface CreateCashfreeOrderParams {
   vendorId?: string; // Add this when you're ready for Easy Split!
 }
 
+// Create an instance of Cashfree SDK
+const cf = new Cashfree();
+
 export function initCashfree() {
   // @ts-ignore
-  Cashfree.XClientId = process.env.CASHFREE_APP_ID || "";
+  cf.XClientId = process.env.CASHFREE_APP_ID || "";
   // @ts-ignore
-  Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY || "";
+  cf.XClientSecret = process.env.CASHFREE_SECRET_KEY || "";
   
   if (process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION") {
     // @ts-ignore
-    Cashfree.XEnvironment = CFEnvironment.PRODUCTION;
+    cf.XEnvironment = CFEnvironment.PRODUCTION;
   } else {
     // @ts-ignore
-    Cashfree.XEnvironment = CFEnvironment.SANDBOX;
+    cf.XEnvironment = CFEnvironment.SANDBOX;
   }
 }
 
@@ -51,7 +54,7 @@ export async function createCashfreeOrder(params: CreateCashfreeOrderParams) {
     // }
 
     // @ts-ignore
-    const response = await Cashfree.PGCreateOrder("2023-08-01", request);
+    const response = await cf.PGCreateOrder("2023-08-01", request);
     return { data: response.data };
   } catch (err: any) {
     console.error("Cashfree order creation error:", err.response?.data || err);
@@ -63,7 +66,7 @@ export async function verifyCashfreePayment(orderId: string) {
   initCashfree();
   try {
     // @ts-ignore
-    const response = await Cashfree.PGOrderFetchPayments("2023-08-01", orderId);
+    const response = await cf.PGOrderFetchPayments("2023-08-01", orderId);
     // Filter for successful payments
     const successfulPayment = response.data.filter((p: any) => p.payment_status === "SUCCESS");
     if (successfulPayment.length > 0) {
