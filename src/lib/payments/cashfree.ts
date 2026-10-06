@@ -1,4 +1,23 @@
-import { Cashfree, CFEnvironment } from "cashfree-pg";
+/**
+ * Cashfree Payment Gateway - Direct REST API integration
+ * Using fetch instead of the cashfree-pg SDK to avoid Next.js bundling issues.
+ */
+
+const CASHFREE_BASE_URL =
+  process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION"
+    ? "https://api.cashfree.com/pg"
+    : "https://sandbox.cashfree.com/pg";
+
+const API_VERSION = "2023-08-01";
+
+function getHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "x-api-version": API_VERSION,
+    "x-client-id": process.env.CASHFREE_APP_ID!,
+    "x-client-secret": process.env.CASHFREE_SECRET_KEY!,
+  };
+}
 
 export interface CreateCashfreeOrderParams {
   orderId: string;
@@ -6,34 +25,14 @@ export interface CreateCashfreeOrderParams {
   customerPhone?: string;
   customerEmail?: string;
   customerName?: string;
-  vendorId?: string; // Add this when you're ready for Easy Split!
-}
-
-let initialized = false;
-
-function initCashfree() {
-  if (initialized) return;
-
-  // @ts-ignore - SDK uses static assignment pattern
-  Cashfree.XClientId = process.env.CASHFREE_APP_ID!;
-  // @ts-ignore
-  Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY!;
-  // @ts-ignore
-  Cashfree.XEnvironment =
-    process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT === "PRODUCTION"
-      ? CFEnvironment.PRODUCTION
-      : CFEnvironment.SANDBOX;
-
-  initialized = true;
+  vendorId?: string; // For Easy Split when ready
 }
 
 export async function createCashfreeOrder(params: CreateCashfreeOrderParams) {
-  initCashfree();
-
-  const request = {
+  const body: Record<string, unknown> = {
+    order_id: params.orderId,
     order_amount: params.amountInr,
     order_currency: "INR",
-    order_id: params.orderId,
     customer_details: {
       customer_id: `cust_${params.orderId}`,
       customer_phone: params.customerPhone || "9999999999",
@@ -43,33 +42,44 @@ export async function createCashfreeOrder(params: CreateCashfreeOrderParams) {
     order_meta: {
       return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/checkout/verify?order_id=${params.orderId}&session_id={payment_session_id}`,
     },
-    // If using Easy Split, uncomment and pass vendorId from createOrder call:
+    // Easy Split - uncomment when vendorId is ready:
     // ...(params.vendorId && {
     //   order_splits: [{ vendor_id: params.vendorId, percentage: 100 }],
     // }),
   };
 
   try {
-    // @ts-ignore - static method on Cashfree class
-    const response = await Cashfree.PGCreateOrder("2023-08-01", request);
-    return { data: response.data };
+    const res = await fetch(`${CASHFREE_BASE_URL}/orders`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Cashfree order creation failed:", data);
+      return { error: data?.message || "Failed to create Cashfree order." };
+    }
+
+    return { data };
   } catch (err: any) {
-    const msg =
-      err?.response?.data?.message ||
-      err?.message ||
-      "Failed to create Cashfree order.";
-    console.error("Cashfree order creation error:", err?.response?.data || err);
-    return { error: msg };
+    console.error("Cashfree order creation error:", err);
+    return { error: err?.message || "Failed to create Cashfree order." };
   }
 }
 
 export async function verifyCashfreePayment(cfOrderId: string): Promise<boolean> {
-  initCashfree();
   try {
-    // @ts-ignore - static method on Cashfree class
-    const response = await Cashfree.PGOrderFetchPayments("2023-08-01", cfOrderId);
-    const payments: any[] = response?.data ?? [];
-    return payments.some((p) => p.payment_status === "SUCCESS");
+    const res = await fetch(
+      `${CASHFREE_BASE_URL}/orders/${cfOrderId}/payments`,
+      { headers: getHeaders() }
+    );
+
+    if (!res.ok) return false;
+
+    const payments: any[] = await res.json();
+    return Array.isArray(payments) && payments.some((p) => p.payment_status === "SUCCESS");
   } catch (err) {
     console.error("Cashfree payment verification error:", err);
     return false;
