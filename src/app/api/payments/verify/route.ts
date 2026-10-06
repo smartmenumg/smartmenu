@@ -17,24 +17,15 @@ async function verifyAndConfirm(orderId: string) {
     return { error: "Order not found.", status: 404 };
   }
 
-  // If already confirmed
+  // If already confirmed, just return success (idempotent)
   if (order.status !== "pending_payment") {
     return { success: true, trackingToken: order.tracking_token, alreadyProcessed: true };
   }
 
-  // 2. Fetch from payments table to get cf_order_id
-  const { data: payment } = await (adminClient as any)
-    .from("payments")
-    .select("cf_order_id")
-    .eq("order_id", orderId)
-    .single();
-
-  if (!payment || !payment.cf_order_id) {
-     return { error: "Payment record not found.", status: 404 };
-  }
-
-  // 3. Verify Cashfree Payment via API
-  const isValid = await verifyCashfreePayment(payment.cf_order_id);
+  // 2. Verify payment directly with Cashfree using our orderId
+  // Cashfree's API accepts the same order_id we passed when creating the order.
+  // No need to look up cf_order_id from our DB.
+  const isValid = await verifyCashfreePayment(orderId);
 
   if (!isValid) {
     return {
@@ -44,7 +35,7 @@ async function verifyAndConfirm(orderId: string) {
     };
   }
 
-  // 3. Mark payment as paid
+  // 3. Mark payment record as paid
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (adminClient as any)
     .from("payments")
@@ -58,15 +49,12 @@ async function verifyAndConfirm(orderId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (adminClient as any)
     .from("orders")
-    .update({
-      status: "confirmed",
-    })
+    .update({ status: "confirmed" })
     .eq("id", orderId);
 
   return { success: true, trackingToken: order.tracking_token };
 }
 
-// Handler for Client-side verification POST call
 export async function POST(req: NextRequest) {
   try {
     const { orderId } = await req.json();

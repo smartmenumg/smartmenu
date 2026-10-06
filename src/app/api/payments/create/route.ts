@@ -163,8 +163,9 @@ export async function POST(req: NextRequest) {
     // 3. Create Cashfree Order
     const cfRes = await createCashfreeOrder({
       orderId: orderId,
-      amountInr: totalAmount / 100, // Cashfree uses INR, not paise
-      customerPhone: "9999999999", // TODO: replace with actual customer details if needed
+      amountInr: totalAmount / 100, // Cashfree uses rupees, totalAmount is in paise
+      customerPhone: mobile,         // actual customer mobile
+      customerName: customerName,    // actual customer name
     });
 
     if (cfRes.error || !cfRes.data) {
@@ -176,15 +177,19 @@ export async function POST(req: NextRequest) {
 
     // 4. Save Payment Record
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (adminClient as any).from("payments").insert({
+    const { error: paymentInsertError } = await (adminClient as any).from("payments").insert({
       order_id: orderId,
       gateway: "cashfree",
       cf_order_id: cfRes.data.order_id,
       payment_session_id: cfRes.data.payment_session_id,
-      amount: totalAmount, // saving as paise in our db to match previous logic
+      amount: totalAmount, // in paise
       currency: "INR",
       status: "created",
     });
+    if (paymentInsertError) {
+      console.error("Failed to insert payment record:", paymentInsertError);
+      // Non-fatal: order is created and Cashfree session is valid, log and continue
+    }
 
     return NextResponse.json({
       orderId,
