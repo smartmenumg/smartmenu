@@ -167,59 +167,166 @@ export function QRManagerClient({
   };
 
   const handleGeneratePDF = async () => {
-    // If we have added or removed seats, fetch the latest signatures before generating
-    if (Object.keys(currentSignedUrls).length !== allSeats.length) {
-      setIsGeneratingPdf(true);
-      try {
-        const signed = await getSignedQrUrls(selectedAudiId, allSeats, customBaseUrl);
-        setSignedUrls(prev => ({ ...prev, [selectedAudiId]: signed }));
-        await new Promise((r) => setTimeout(r, 150));
-      } finally {
-        setIsGeneratingPdf(false);
-      }
-    }
-
     setIsGeneratingPdf(true);
     try {
-      // Dynamic import to keep initial bundle size small
+      // Ensure we have signed URLs
+      let urlsToUse = currentSignedUrls;
+      if (Object.keys(currentSignedUrls).length !== allSeats.length) {
+        const signed = await getSignedQrUrls(selectedAudiId, allSeats, customBaseUrl);
+        setSignedUrls(prev => ({ ...prev, [selectedAudiId]: signed }));
+        urlsToUse = signed;
+      }
+
       const jsPDF = (await import("jspdf")).default;
-      const html2canvas = (await import("html2canvas")).default;
-      
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "px",
-        format: [800, 400], // 2:1 ratio exactly
+      const QRCode = (await import("qrcode")).default;
+
+      // Physical page: 280mm x 140mm (2:1 landscape)
+      const W_MM = 280;
+      const H_MM = 140;
+
+      // Offscreen canvas at high DPI for sharp rendering (4px per mm)
+      const SCALE = 4;
+      const W_PX = W_MM * SCALE;
+      const H_PX = H_MM * SCALE;
+      const M = 48; // margin px (=12mm)
+
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: [W_MM, H_MM] });
+      const audiName = selectedAudi?.name ?? "Screen";
+
+      // Pre-load the premium highly-detailed food icons image
+      const premiumIconsImg = new Image();
+      await new Promise<void>((resolve, reject) => {
+        premiumIconsImg.onload = () => resolve();
+        premiumIconsImg.onerror = () => reject(new Error("Failed to load food icons image"));
+        premiumIconsImg.src = "/food-icons.jpg";
       });
 
       for (let i = 0; i < allSeats.length; i++) {
         const seat = allSeats[i];
-        const elementId = `qr-card-pdf-${i}`;
-        const element = document.getElementById(elementId);
+        const url = urlsToUse[seat] ?? makePreviewUrl(seat);
+
+        if (i > 0) pdf.addPage([W_MM, H_MM], "landscape");
+
+        // ── Offscreen Canvas ─────────────────────────────────────────────────
+        const canvas = document.createElement("canvas");
+        canvas.width = W_PX;
+        canvas.height = H_PX;
+        const ctx = canvas.getContext("2d")!;
+
+        // White background
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, W_PX, H_PX);
+
+        // Divider line
+        const divX = W_PX * 0.52;
+        ctx.strokeStyle = "#dddddd";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(divX, M);
+        ctx.lineTo(divX, H_PX - M - 40);
+        ctx.stroke();
+
+        // ── LEFT PANEL ───────────────────────────────────────────────────────
+        const leftMaxX = divX - M; // hard boundary for left panel text
+
+        // Main heading — restored to previous large size
+        const headingFontSize = SCALE * 14;
+        ctx.fillStyle = "#000000";
+        ctx.font = `900 ${headingFontSize}px Arial Black, Arial, sans-serif`;
+        ctx.textBaseline = "top";
+        ctx.fillText("ORDER YOUR", M, M + 4, leftMaxX - M);
+        ctx.fillText("FOOD HERE", M, M + 4 + headingFontSize * 1.15, leftMaxX - M);
+
+        // Premium illustrated food icons — correctly positioned below both heading lines
+        // Line 2 ends at: M + 4 + headingFontSize * 1.15 + headingFontSize ≈ M + headingFontSize * 2.3
+        const iconY = M + 4 + headingFontSize * 2.4;
+        const iconWidth = leftMaxX - M; 
+        // Crop the 1024x1024 square to the middle 35% band where the icons are drawn (prevents flattening)
+        const sWidth = premiumIconsImg.width;
+        const sHeight = premiumIconsImg.height * 0.35;
+        const sx = 0;
+        const sy = premiumIconsImg.height * 0.325;
         
-        if (element) {
-          element.style.display = "flex";
-          const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-          element.style.display = "none";
-          
-          const imgData = canvas.toDataURL("image/png");
-          
-          if (i > 0) {
-            pdf.addPage([800, 400], "landscape");
-          }
-          pdf.addImage(imgData, "PNG", 0, 0, 800, 400);
+        const iconHeight = iconWidth * (sHeight / sWidth); // maintain cropped aspect ratio
+        ctx.drawImage(premiumIconsImg, sx, sy, sWidth, sHeight, M, iconY, iconWidth, iconHeight);
+
+        // Tagline — sits just below the icons
+        ctx.fillStyle = "#111111";
+        ctx.font = `bold ${SCALE * 10}px Arial, sans-serif`;
+        ctx.textBaseline = "top";
+        ctx.fillText("Scan  |  Order  |  Pay", M, iconY + iconHeight + SCALE * 4);
+
+        // ── RIGHT PANEL: QR ───────────────────────────────────────────────────
+        const qrAreaX = divX + M * 0.8;
+        const qrAreaW = W_PX - qrAreaX - M;
+        const qrAreaH = H_PX - M * 2 - SCALE * 14;
+        const qrSize = Math.min(qrAreaW, qrAreaH) - M;
+        const qrX = qrAreaX + (qrAreaW - qrSize) / 2;
+        const qrY_px = M + (qrAreaH - qrSize) / 2;
+
+        // QR border rounded rect
+        const br = SCALE * 6;
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = SCALE * 0.8;
+        ctx.beginPath();
+        ctx.roundRect(qrX - M * 0.4, qrY_px - M * 0.4, qrSize + M * 0.8, qrSize + M * 0.8, br);
+        ctx.stroke();
+
+        // Generate QR as PNG data URL
+        const qrDataUrl = await QRCode.toDataURL(url, {
+          errorCorrectionLevel: "H",
+          width: qrSize,
+          margin: 1,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        const qrImg = new Image();
+        await new Promise<void>(res => { qrImg.onload = () => res(); qrImg.src = qrDataUrl; });
+        ctx.drawImage(qrImg, qrX, qrY_px, qrSize, qrSize);
+
+        // ── FOOTER ────────────────────────────────────────────────────────────
+        // Footer sits BELOW the main card area with its own background band
+        const fBandY = H_PX - M * 2.2;
+        ctx.fillStyle = "#f8f8f8";
+        ctx.fillRect(0, fBandY, W_PX, H_PX - fBandY);
+
+        ctx.strokeStyle = "#cccccc";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, fBandY);
+        ctx.lineTo(W_PX, fBandY);
+        ctx.stroke();
+
+        const footerText = `${theatreName || "Veer Cinema, Satna/khandwa"}  ·  ${audiName}  ·  Seat ${seat}`;
+        // Auto-scale font size so text never overflows
+        let footerFontSize = SCALE * 10;
+        ctx.font = `bold ${footerFontSize}px Arial, sans-serif`;
+        while (ctx.measureText(footerText).width > W_PX - M * 2 && footerFontSize > SCALE * 6) {
+          footerFontSize -= 2;
+          ctx.font = `bold ${footerFontSize}px Arial, sans-serif`;
         }
+        ctx.fillStyle = "#222222";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.fillText(footerText, W_PX / 2, fBandY + (H_PX - fBandY) / 2);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+
+        // Add full canvas as single image to PDF page
+        const pageImg = canvas.toDataURL("image/png");
+        pdf.addImage(pageImg, "PNG", 0, 0, W_MM, H_MM);
       }
 
-      const safeTheatre = (theatreName || "Theatre").replace(/\s+/g, '_');
-      const safeAudi = (selectedAudi?.name || "Audi").replace(/\s+/g, '_');
-      pdf.save(`QR_Cards_${safeTheatre}_${safeAudi}.pdf`);
+      const safeT = (theatreName || "Theatre").replace(/\s+/g, "_");
+      const safeA = audiName.replace(/\s+/g, "_");
+      pdf.save(`QR_Cards_${safeT}_${safeA}.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF", err);
-      alert("Failed to generate PDF. See console.");
+      alert("Failed to generate PDF. See console for details.");
     } finally {
       setIsGeneratingPdf(false);
     }
   };
+
 
   // Automatically fetch signed URLs in the background when the layout is modified
   // so the on-screen QR codes are immediately valid without waiting for Print.
