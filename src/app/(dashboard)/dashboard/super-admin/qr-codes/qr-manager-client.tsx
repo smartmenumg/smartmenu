@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Loader2,
   Link2,
+  Download,
 } from "lucide-react";
 
 interface QRManagerClientProps {
@@ -54,6 +55,7 @@ export function QRManagerClient({
   // Signed URLs — pre-generated server-side per audi
   const [signedUrls, setSignedUrls] = useState<Record<string, Record<string, string>>>(initialSignedUrls);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Sync state if auditoriums or initialSignedUrls change (e.g. theatre switch)
   useEffect(() => {
@@ -162,6 +164,61 @@ export function QRManagerClient({
       }
     }
     window.print();
+  };
+
+  const handleGeneratePDF = async () => {
+    // If we have added or removed seats, fetch the latest signatures before generating
+    if (Object.keys(currentSignedUrls).length !== allSeats.length) {
+      setIsGeneratingPdf(true);
+      try {
+        const signed = await getSignedQrUrls(selectedAudiId, allSeats, customBaseUrl);
+        setSignedUrls(prev => ({ ...prev, [selectedAudiId]: signed }));
+        await new Promise((r) => setTimeout(r, 150));
+      } finally {
+        setIsGeneratingPdf(false);
+      }
+    }
+
+    setIsGeneratingPdf(true);
+    try {
+      // Dynamic import to keep initial bundle size small
+      const jsPDF = (await import("jspdf")).default;
+      const html2canvas = (await import("html2canvas")).default;
+      
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [800, 400], // 2:1 ratio exactly
+      });
+
+      for (let i = 0; i < allSeats.length; i++) {
+        const seat = allSeats[i];
+        const elementId = `qr-card-pdf-${i}`;
+        const element = document.getElementById(elementId);
+        
+        if (element) {
+          element.style.display = "flex";
+          const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+          element.style.display = "none";
+          
+          const imgData = canvas.toDataURL("image/png");
+          
+          if (i > 0) {
+            pdf.addPage([800, 400], "landscape");
+          }
+          pdf.addImage(imgData, "PNG", 0, 0, 800, 400);
+        }
+      }
+
+      const safeTheatre = (theatreName || "Theatre").replace(/\s+/g, '_');
+      const safeAudi = (selectedAudi?.name || "Audi").replace(/\s+/g, '_');
+      pdf.save(`QR_Cards_${safeTheatre}_${safeAudi}.pdf`);
+    } catch (err) {
+      console.error("Failed to generate PDF", err);
+      alert("Failed to generate PDF. See console.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   // Automatically fetch signed URLs in the background when the layout is modified
@@ -400,18 +457,32 @@ export function QRManagerClient({
                 <QrCode className="w-4 h-4 text-slate-500" />
                 Preview — {totalSeats} codes
               </h2>
-              <Button
-                onClick={handlePrint}
-                disabled={totalSeats === 0 || isPrinting}
-                variant="outline"
-                size="sm"
-                className="border-slate-200 text-slate-600 hover:bg-slate-50 h-8"
-              >
-                {isPrinting
-                  ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  : <Printer className="w-3.5 h-3.5 mr-1.5" />}
-                {isPrinting ? "Signing..." : "Print All"}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleGeneratePDF}
+                  disabled={totalSeats === 0 || isGeneratingPdf || isPrinting}
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-200 text-slate-600 hover:bg-slate-50 h-8"
+                >
+                  {isGeneratingPdf
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <Download className="w-3.5 h-3.5 mr-1.5" />}
+                  {isGeneratingPdf ? "Generating PDF..." : "Download PDF Cards"}
+                </Button>
+                <Button
+                  onClick={handlePrint}
+                  disabled={totalSeats === 0 || isPrinting || isGeneratingPdf}
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-200 text-slate-600 hover:bg-slate-50 h-8"
+                >
+                  {isPrinting
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <Printer className="w-3.5 h-3.5 mr-1.5" />}
+                  {isPrinting ? "Signing..." : "Print All"}
+                </Button>
+              </div>
             </div>
 
             {totalSeats === 0 ? (
@@ -481,6 +552,109 @@ export function QRManagerClient({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ─── Hidden PDF Card Layout (all inline styles — no Tailwind — to avoid html2canvas crashing on modern CSS color functions) */}
+      <div style={{ position: "fixed", top: "-9999px", left: "-9999px", pointerEvents: "none" }}>
+        {allSeats.map((seat, index) => (
+          <div
+            key={index}
+            id={`qr-card-pdf-${index}`}
+            style={{
+              display: "none",
+              width: "800px",
+              height: "400px",
+              backgroundColor: "#ffffff",
+              fontFamily: "Arial, Helvetica, sans-serif",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            {/* Main content area */}
+            <div style={{ display: "flex", flex: 1, padding: "40px 48px 24px 48px" }}>
+
+              {/* Left Side */}
+              <div style={{ width: "55%", display: "flex", flexDirection: "column", justifyContent: "space-between", paddingRight: "32px" }}>
+                {/* Heading */}
+                <div>
+                  <h2 style={{
+                    fontSize: "52px",
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                    color: "#000000",
+                    lineHeight: "1.05",
+                    letterSpacing: "-1px",
+                    margin: 0,
+                    fontFamily: "Arial Black, Arial, sans-serif",
+                  }}>
+                    Order Your<br />Food Here
+                  </h2>
+                </div>
+
+                {/* Food Icons — pure SVG inline, no currentColor */}
+                <div style={{ display: "flex", alignItems: "center", gap: "28px", padding: "20px 0" }}>
+                  {/* Burger */}
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 10a8 8 0 0 1 16 0" />
+                    <path d="M4 14a8 8 0 0 0 16 0" />
+                    <path d="M3 12h18" />
+                    <path d="M5 14v1a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-1" />
+                  </svg>
+                  {/* Drink */}
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 8h14" />
+                    <path d="M6 8l1.5 12h9L18 8" />
+                    <path d="M10 12h4" />
+                    <circle cx="12" cy="16" r="1" />
+                  </svg>
+                  {/* Popcorn */}
+                  <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 3a2 2 0 0 0-2 2c0 .8.5 1.5 1.2 1.8L7 21h10l1.8-14.2A2 2 0 0 0 18 3a2 2 0 0 0-2 1.5 2 2 0 0 0-4 0A2 2 0 0 0 6 3z" />
+                  </svg>
+                </div>
+
+                {/* Tagline */}
+                <p style={{ fontSize: "26px", fontWeight: "800", color: "#000000", margin: 0, letterSpacing: "1px" }}>
+                  Scan | Order | Pay
+                </p>
+              </div>
+
+              {/* Right Side — QR Code */}
+              <div style={{
+                width: "45%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "3px solid #000000",
+                borderRadius: "24px",
+                padding: "16px",
+                backgroundColor: "#ffffff",
+              }}>
+                <QRCodeSVG
+                  value={getPrintUrl(seat)}
+                  size={230}
+                  level="H"
+                  includeMargin={false}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              height: "56px",
+              backgroundColor: "#ffffff",
+              borderTop: "1px solid #e5e7eb",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 48px",
+            }}>
+              <p style={{ fontSize: "18px", fontWeight: "700", color: "#111111", margin: 0, textAlign: "center", letterSpacing: "0.5px" }}>
+                Veer Cinema &nbsp;·&nbsp; {theatreName} &nbsp;·&nbsp; {selectedAudi?.name} &nbsp;·&nbsp; Seat {seat}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </>
   );
