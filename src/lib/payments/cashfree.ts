@@ -41,6 +41,7 @@ export async function createCashfreeOrder(params: CreateCashfreeOrderParams) {
     },
     order_meta: {
       return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/checkout/verify?order_id=${params.orderId}&session_id={payment_session_id}`,
+      notify_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/api/webhooks/cashfree`,
     },
     // Easy Split - uncomment when vendorId is ready:
     // ...(params.vendorId && {
