@@ -3,13 +3,12 @@
 import { useState, useTransition, useCallback, useEffect, useRef } from "react";
 import type { OrderWithDetails, OrderStatus } from "@/types/database";
 import { updateOrderStatus, getAdminOrders, cancelOrder } from "@/lib/orders/order-actions";
-import { getOrdersInRange } from "@/lib/orders/history-actions";
 import { triggerDayEnd, cancelDayEnd } from "@/lib/admin/day-end-actions";
 import { formatPrice } from "@/lib/utils";
 import {
   ClipboardList, Clock, CheckCircle2,
   RefreshCw, Smartphone, MapPin, ChevronDown, ChevronUp, Printer, Wifi, WifiOff,
-  Moon, Sun, AlertTriangle, Volume2, LogOut, Download, Calendar, History,
+  Moon, Sun, AlertTriangle, Volume2, LogOut,
 } from "lucide-react";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import type { UserRole } from "@/types/database";
@@ -48,78 +47,6 @@ function formatTodayIST(): string {
   });
 }
 
-// ── KOT Print helper ──────────────────────────────────────────────────────────
-function printKOT(order: OrderWithDetails) {
-  const kotWindow = window.open("", "_blank", "width=400,height=600");
-  if (!kotWindow) {
-    alert("Pop-up blocked. Please allow pop-ups to print KOT.");
-    return;
-  }
-
-  const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-  const shortId = order.id.slice(0, 8).toUpperCase();
-
-  const items = (order.order_items ?? [])
-    .map((item) => {
-      const customizations = Array.isArray(item.selected_customizations) && item.selected_customizations.length > 0
-        ? `<div style="font-size:11px;color:#555;margin-left:12px;">&rarr; ${item.selected_customizations.map((c: { name: string }) => c.name).join(", ")}</div>`
-        : "";
-      return `
-        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #ccc;">
-          <div>
-            <strong>${item.quantity}x ${item.product_name}</strong>
-            ${customizations}
-          </div>
-        </div>`;
-    })
-    .join("");
-
-  kotWindow.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>KOT #${shortId}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Courier New', monospace; font-size: 13px; padding: 12px; max-width: 300px; }
-    .center { text-align: center; }
-    .divider { border-top: 2px dashed #000; margin: 8px 0; }
-    .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
-    .value { font-size: 14px; font-weight: bold; }
-    h1 { font-size: 18px; font-weight: 900; letter-spacing: 2px; }
-    h2 { font-size: 13px; font-weight: 700; }
-    @media print {
-      body { margin: 0; padding: 8px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="center">
-    <h1>KOT</h1>
-    <div class="label">Kitchen Order Ticket</div>
-  </div>
-  <div class="divider"></div>
-  <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-    <div><span class="label">Order ID</span><br/><span class="value">#${shortId}</span></div>
-    <div style="text-align:right;"><span class="label">Time</span><br/><span style="font-size:11px;">${now}</span></div>
-  </div>
-  <div class="divider"></div>
-  <div style="margin-bottom:4px;"><span class="label">Customer</span><br/><span class="value">${order.customer_name}</span></div>
-  <div style="margin-bottom:4px;"><span class="label">Location</span><br/><span class="value">${order.auditoriums?.name ?? "-"} | Seat ${order.seat_number}</span></div>
-  <div style="margin-bottom:4px;"><span class="label">Mobile</span><br/><span>${order.mobile}</span></div>
-  <div class="divider"></div>
-  <h2 style="margin-bottom:6px;">ITEMS</h2>
-  ${items}
-  <div class="divider"></div>
-  <div style="text-align:right;font-size:15px;font-weight:900;">Total: ${formatPrice(order.total_amount)}</div>
-  <div class="divider"></div>
-  <div class="center label" style="margin-top:8px;">Accepted at: ${now}</div>
-  <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
-</body>
-</html>`);
-  kotWindow.document.close();
-}
-
 // ── Compact Order Card ────────────────────────────────────────────────────────
 function OrderCard({
   order,
@@ -138,13 +65,8 @@ function OrderCard({
 
   const handleNext = () => {
     if (!next) return;
-    const willPrintKOT = next.status === "accepted";
     startTransition(async () => {
       await onStatusUpdate(order.id, next.status);
-      // Auto-print KOT when accepting an order
-      if (willPrintKOT) {
-        printKOT(order);
-      }
     });
   };
 
@@ -289,271 +211,9 @@ function useOrderSound() {
   }, []);
 }
 
-// ── Order History / Report Tab ────────────────────────────────────────────────
-type ReportRange = "today" | "week" | "month" | "custom";
 
-function getISTDateString(date: Date): string {
-  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // YYYY-MM-DD
-}
 
-function getTodayIST() { return getISTDateString(new Date()); }
-function getDateDaysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return getISTDateString(d);
-}
-function getMonthStartIST() {
-  const d = new Date();
-  d.setDate(1);
-  return getISTDateString(d);
-}
 
-function OrderHistoryTab({ theatreId }: { theatreId: string }) {
-  const [range, setRange] = useState<ReportRange>("today");
-  const [customFrom, setCustomFrom] = useState(getTodayIST());
-  const [customTo, setCustomTo]     = useState(getTodayIST());
-  const [historyOrders, setHistoryOrders] = useState<OrderWithDetails[] | null>(null);
-  const [loading, startLoad] = useTransition();
-  const [downloadLoading, setDownloadLoading] = useState(false);
-  const isAllView = theatreId === "all";
-
-  function getDateRange(): { from: string; to: string } {
-    const today = getTodayIST();
-    if (range === "today")  return { from: today, to: today };
-    if (range === "week")   return { from: getDateDaysAgo(6), to: today };
-    if (range === "month")  return { from: getMonthStartIST(), to: today };
-    return { from: customFrom, to: customTo };
-  }
-
-  const fetchReport = () => {
-    const { from, to } = getDateRange();
-    startLoad(async () => {
-      const orders = await getOrdersInRange(from, to);
-      setHistoryOrders(orders);
-    });
-  };
-
-  const downloadExcel = async () => {
-    if (!historyOrders || historyOrders.length === 0) return;
-    setDownloadLoading(true);
-    try {
-      const XLSX = await import("xlsx");
-      const { from, to } = getDateRange();
-
-      const totalRevenue = historyOrders.filter(o => o.status !== "cancelled").reduce((s, o) => s + o.total_amount, 0);
-      const delivered = historyOrders.filter(o => o.status === "delivered").length;
-      const cancelled = historyOrders.filter(o => o.status === "cancelled").length;
-
-      const summaryData = [
-        ["Report Period", `${from} to ${to}`],
-        ["Generated At", new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })],
-        [],
-        ["Metric", "Value"],
-        ["Total Orders", historyOrders.length],
-        ["Delivered", delivered],
-        ["Cancelled", cancelled],
-        ["Total Revenue (Rs.)", (totalRevenue / 100).toFixed(2)],
-        ["Avg Order Value (Rs.)", historyOrders.length > 0 ? ((totalRevenue / 100) / historyOrders.length).toFixed(2) : "0.00"],
-      ];
-
-      const orderRows = historyOrders.map(o => ({
-        "Order ID":     o.id.slice(0, 8).toUpperCase(),
-        "Date":         new Date(o.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
-        "Time":         new Date(o.created_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }),
-        "Customer":     o.customer_name,
-        "Mobile":       o.mobile,
-        "Auditorium":   o.auditoriums?.name ?? "",
-        "Seat":         o.seat_number,
-        "Items":        o.order_items?.length ?? 0,
-        "GST (Rs.)":    ((o.gst_amount ?? 0) / 100).toFixed(2),
-        "Total (Rs.)":  (o.total_amount / 100).toFixed(2),
-        "Status":       o.status,
-      }));
-
-      const itemRows: Record<string, string | number>[] = [];
-      historyOrders.forEach(o => {
-        (o.order_items ?? []).forEach(item => {
-          itemRows.push({
-            "Order ID":           o.id.slice(0, 8).toUpperCase(),
-            "Date":               new Date(o.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }),
-            "Customer":           o.customer_name,
-            "Product":            item.product_name,
-            "Qty":                item.quantity,
-            "Unit Price (Rs.)":   ((item.unit_price ?? 0) / 100).toFixed(2),
-            "Subtotal (Rs.)":     (item.subtotal / 100).toFixed(2),
-            "Customizations":     Array.isArray(item.selected_customizations)
-              ? item.selected_customizations.map((c: { name: string }) => c.name).join(", ")
-              : "",
-          });
-        });
-      });
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "Summary");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(orderRows), "Orders");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itemRows), "Order Items");
-
-      XLSX.writeFile(wb, `SmartMenu_Report_${from}_to_${to}.xlsx`);
-    } catch (e) {
-      console.error("Excel export error:", e);
-      alert("Failed to generate report. Please try again.");
-    } finally {
-      setDownloadLoading(false);
-    }
-  };
-
-  const { from, to } = getDateRange();
-  const totalRevenue = (historyOrders ?? []).filter(o => o.status !== "cancelled").reduce((s, o) => s + o.total_amount, 0);
-  const deliveredCount = (historyOrders ?? []).filter(o => o.status === "delivered").length;
-  const cancelledCount = (historyOrders ?? []).filter(o => o.status === "cancelled").length;
-
-  return (
-    <div className="space-y-5">
-      {/* Range selector */}
-      <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-slate-500" />
-          <h2 className="font-bold text-slate-800 text-base">Order History Report</h2>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {(["today", "week", "month", "custom"] as ReportRange[]).map(r => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                range === r
-                  ? "bg-slate-800 text-white border-slate-800"
-                  : "text-slate-600 border-slate-200 hover:border-slate-400"
-              }`}
-            >
-              {r === "today" ? "Today" : r === "week" ? "Last 7 Days" : r === "month" ? "This Month" : "Custom Range"}
-            </button>
-          ))}
-        </div>
-
-        {range === "custom" && (
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">From</label>
-              <input
-                type="date"
-                value={customFrom}
-                onChange={e => setCustomFrom(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">To</label>
-              <input
-                type="date"
-                value={customTo}
-                onChange={e => setCustomTo(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 pt-1">
-          <button
-            onClick={fetchReport}
-            disabled={loading}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50 transition-all"
-          >
-            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
-            Generate Report
-          </button>
-          {historyOrders && historyOrders.length > 0 && (
-            <button
-              onClick={downloadExcel}
-              disabled={downloadLoading}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-all"
-            >
-              {downloadLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Download Excel
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Results */}
-      {historyOrders !== null && (
-        <>
-          {/* Stats summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: "Total Orders", value: historyOrders.length, color: "text-slate-800" },
-              { label: "Delivered", value: deliveredCount, color: "text-emerald-600" },
-              { label: "Cancelled", value: cancelledCount, color: "text-red-500" },
-              { label: "Revenue", value: formatPrice(totalRevenue), color: "text-blue-600" },
-            ].map(stat => (
-              <div key={stat.label} className="bg-white rounded-xl p-4 shadow-sm text-center">
-                <p className={`text-2xl font-extrabold ${stat.color}`}>{stat.value}</p>
-                <p className="text-xs text-slate-500 font-medium mt-1">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-xs text-slate-400 text-center">
-            Showing data from <strong className="text-slate-600">{from}</strong> to <strong className="text-slate-600">{to}</strong>
-            {isAllView ? " (All theatres)" : ""}
-          </div>
-
-          {historyOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white rounded-2xl">
-              <History className="w-10 h-10 text-slate-300" />
-              <p className="text-slate-400 text-sm font-medium">No orders found for this period.</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-semibold text-slate-700 text-sm">{historyOrders.length} orders</h3>
-                <span className="text-xs text-slate-400">Most recent first</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      {["Order ID","Date","Customer","Location","Items","Total","Status"].map(h => (
-                        <th key={h} className="px-4 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wide text-[10px] whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {historyOrders.map(o => {
-                      const cfg = STATUS_CONFIG[o.status] ?? STATUS_CONFIG.confirmed;
-                      return (
-                        <tr key={o.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-2.5 font-mono font-semibold text-slate-700">#{o.id.slice(0,8).toUpperCase()}</td>
-                          <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
-                            {new Date(o.created_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day:"2-digit", month:"short" })}
-                            {" "}
-                            <span className="text-slate-400">{new Date(o.created_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour:"2-digit", minute:"2-digit" })}</span>
-                          </td>
-                          <td className="px-4 py-2.5 font-medium text-slate-800 whitespace-nowrap">{o.customer_name}</td>
-                          <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">{o.auditoriums?.name} / {o.seat_number}</td>
-                          <td className="px-4 py-2.5 text-center text-slate-600">{o.order_items?.length ?? 0}</td>
-                          <td className="px-4 py-2.5 font-semibold text-slate-800">{formatPrice(o.total_amount)}</td>
-                          <td className="px-4 py-2.5">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${cfg.bg} ${cfg.color}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                              {cfg.label}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
 
 interface AdminOrdersClientProps {
   initialOrders: OrderWithDetails[];
@@ -577,7 +237,7 @@ export function AdminOrdersClient({
   const theatreMap = new Map((allTheatres ?? []).map(t => [t.id, t.name]));
   const [orders, setOrders]             = useState<OrderWithDetails[]>(initialOrders);
   const [refreshing, startRefresh]      = useTransition();
-  const [activeTab, setActiveTab]       = useState<"active" | "done" | "history">("active");
+  const [activeTab, setActiveTab]       = useState<"active" | "done">("active");
   const [connected, setConnected]       = useState(false);
   const [isDayEnded, setIsDayEnded]     = useState(initialDayEnded);
   const [dayEndLoading, startDayEnd]    = useTransition();
@@ -747,7 +407,7 @@ export function AdminOrdersClient({
 
           <div className="flex items-center gap-3">
             <div className="inline-flex gap-1 p-1 rounded-full bg-slate-200/50">
-              {(["active", "done", "history"] as const).map(tab => (
+              {(["active", "done"] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -757,30 +417,24 @@ export function AdminOrdersClient({
                       : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50"
                   }`}
                 >
-                  {tab === "history" && <History className="w-3.5 h-3.5" />}
-                  {tab === "active" ? "Pending" : tab === "done" ? "Completed" : "History"}
+                  {tab === "active" ? "Pending" : "Completed"}
                 </button>
               ))}
             </div>
 
-            {activeTab !== "history" && (
-              <button
-                onClick={refresh}
-                disabled={refreshing}
-                className="p-2.5 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all disabled:opacity-50"
-                aria-label="Refresh orders"
-              >
-                <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
-              </button>
-            )}
+            <button
+              onClick={refresh}
+              disabled={refreshing}
+              className="p-2.5 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all disabled:opacity-50"
+              aria-label="Refresh orders"
+            >
+              <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
           </div>
         </div>
 
         {/* Tab content */}
-        {activeTab === "history" ? (
-          <OrderHistoryTab theatreId={theatreId} />
-        ) : (
-          shown.length === 0 ? (
+        {shown.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-2">
                 <ClipboardList className="w-8 h-8 text-slate-400" />
@@ -803,8 +457,7 @@ export function AdminOrdersClient({
                 />
               ))}
             </div>
-          )
-        )}
+          )}
       </div>
     </div>
   );
