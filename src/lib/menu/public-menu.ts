@@ -29,11 +29,18 @@ export interface PublicProduct {
   customizations?: PublicCustomization[];
 }
 
+export interface SeatRow {
+  name: string;   // e.g. "A", "B", "GOLD"
+  from: number;   // first seat number
+  to: number;     // last seat number
+}
+
 export interface PublicAuditorium {
   id: string;
   name: string;
   total_seats: number;
   display_order: number;
+  seat_layout: { rows: SeatRow[] };
 }
 
 function getTodayDayOfWeekIST(): number {
@@ -73,11 +80,12 @@ export async function getPublicMenu(theatreId: string) {
 
     client
       .from("auditoriums")
-      .select("id, name, total_seats, display_order")
+      .select("id, name, total_seats, display_order, seat_layout")
       .eq("theatre_id", theatreId)
       .eq("active", true)
       .order("display_order", { ascending: true })
-      .returns<PublicAuditorium[]>(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .returns<any[]>(),
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (client as any)
@@ -137,7 +145,10 @@ export async function getPublicMenu(theatreId: string) {
   return {
     categories: categoriesRes.data ?? [],
     products: productsWithCustomizations,
-    auditoriums: auditoriumsRes.data ?? [],
+    auditoriums: ((auditoriumsRes.data ?? []) as PublicAuditorium[]).map(a => ({
+      ...a,
+      seat_layout: a.seat_layout ?? { rows: [] },
+    })),
   };
 }
 

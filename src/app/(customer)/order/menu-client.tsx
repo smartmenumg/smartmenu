@@ -739,6 +739,19 @@ function CheckoutForm({
   const set = (key: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFormData((prev) => ({ ...prev, [key]: e.target.value }));
 
+  // Derived state for smart seat selector
+  const selectedAudi = auditoriums.find(a => a.id === formData.auditoriumId);
+  const layoutRows = selectedAudi?.seat_layout?.rows || [];
+  const hasLayout = layoutRows.length > 0;
+
+  // Find the row definition that matches the current seat number prefix
+  const derivedRowDef = layoutRows
+    .filter(r => formData.seatNumber.startsWith(r.name))
+    .sort((a, b) => b.name.length - a.name.length)[0] || null;
+
+  const derivedRowName = derivedRowDef ? derivedRowDef.name : "";
+  const derivedSeatNum = derivedRowDef ? formData.seatNumber.slice(derivedRowDef.name.length) : "";
+
   return (
     <>
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.07]">
@@ -767,29 +780,27 @@ function CheckoutForm({
         {[
           {label:"Your Name", type:"text", key:"customerName" as const, placeholder:"e.g. Rahul Sharma"},
           {label:"Mobile Number", type:"tel", key:"mobile" as const, placeholder:"10-digit number", inputMode:"numeric" as const, maxLength:10},
-          {label:"Seat Number", type:"text", key:"seatNumber" as const, placeholder:"e.g. A12"},
         ].map(({label, type, key, placeholder, ...rest}) => {
-          const isLocked = isQrScan && key === "seatNumber";
           return (
           <div key={key} className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-widest" style={{color:"rgba(245,158,11,0.7)"}}>
-              {label}{isLocked && <span className="ml-2 text-emerald-400 text-[9px]">🔒 AUTO</span>}
+              {label}
             </label>
             <input
               type={type}
               value={formData[key]}
-              onChange={isLocked ? undefined : set(key)}
-              readOnly={isLocked}
+              onChange={set(key)}
               placeholder={placeholder}
               {...rest}
-              className="w-full px-4 py-3 rounded-xl text-white text-sm border outline-none transition-colors"
+              className="w-full px-4 py-3 rounded-xl text-white border outline-none transition-colors touch-manipulation"
               style={{
-                background: isLocked ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.05)",
-                borderColor: isLocked ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)",
-                cursor: isLocked ? "default" : "text",
+                fontSize: "16px", /* Prevents mobile auto-zoom on focus */
+                background: "rgba(255,255,255,0.05)",
+                borderColor: "rgba(255,255,255,0.1)",
+                cursor: "text",
               }}
-              onFocus={isLocked ? undefined : e => (e.target.style.borderColor="rgba(245,158,11,0.6)")}
-              onBlur={isLocked ? undefined : e => (e.target.style.borderColor="rgba(255,255,255,0.1)")}
+              onFocus={e => (e.target.style.borderColor="rgba(245,158,11,0.6)")}
+              onBlur={e => (e.target.style.borderColor="rgba(255,255,255,0.1)")}
             />
           </div>
         )})}
@@ -800,10 +811,14 @@ function CheckoutForm({
           </label>
           <select
             value={formData.auditoriumId}
-            onChange={isQrScan ? undefined : set("auditoriumId")}
+            onChange={isQrScan ? undefined : (e) => {
+              // When changing auditorium, reset the seat number
+              setFormData(prev => ({ ...prev, auditoriumId: e.target.value, seatNumber: "" }));
+            }}
             disabled={isQrScan}
-            className="w-full px-4 py-3 rounded-xl text-white text-sm border outline-none transition-colors"
+            className="w-full px-4 py-3 rounded-xl text-white border outline-none transition-colors touch-manipulation"
             style={{
+              fontSize: "16px", /* Prevents mobile auto-zoom on focus */
               background: isQrScan ? "rgba(16,185,129,0.08)" : "rgba(20,20,20,0.95)",
               borderColor: isQrScan ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)",
               cursor: isQrScan ? "default" : "auto",
@@ -814,6 +829,66 @@ function CheckoutForm({
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
           </select>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-widest" style={{color:"rgba(245,158,11,0.7)"}}>
+            Seat Number{isQrScan && <span className="ml-2 text-emerald-400 text-[9px]">🔒 AUTO</span>}
+          </label>
+          
+          {isQrScan || !hasLayout ? (
+            <input
+              type="text"
+              value={formData.seatNumber}
+              onChange={isQrScan ? undefined : set("seatNumber")}
+              readOnly={isQrScan}
+              placeholder="e.g. A12"
+              className="w-full px-4 py-3 rounded-xl text-white border outline-none transition-colors touch-manipulation"
+              style={{
+                fontSize: "16px",
+                background: isQrScan ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.05)",
+                borderColor: isQrScan ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)",
+                cursor: isQrScan ? "default" : "text",
+              }}
+              onFocus={isQrScan ? undefined : e => (e.target.style.borderColor="rgba(245,158,11,0.6)")}
+              onBlur={isQrScan ? undefined : e => (e.target.style.borderColor="rgba(255,255,255,0.1)")}
+            />
+          ) : (
+            <div className="flex gap-3">
+              <select
+                value={derivedRowName}
+                onChange={(e) => setFormData(prev => ({ ...prev, seatNumber: e.target.value }))}
+                className="w-1/2 px-4 py-3 rounded-xl text-white border outline-none transition-colors touch-manipulation"
+                style={{
+                  fontSize: "16px",
+                  background: "rgba(20,20,20,0.95)",
+                  borderColor: "rgba(255,255,255,0.1)",
+                }}
+              >
+                <option value="">Select Row</option>
+                {layoutRows.map((r) => (
+                  <option key={r.name} value={r.name}>{r.name}</option>
+                ))}
+              </select>
+
+              <select
+                value={derivedSeatNum}
+                onChange={(e) => setFormData(prev => ({ ...prev, seatNumber: derivedRowName + e.target.value }))}
+                disabled={!derivedRowName}
+                className="w-1/2 px-4 py-3 rounded-xl text-white border outline-none transition-colors touch-manipulation"
+                style={{
+                  fontSize: "16px",
+                  background: !derivedRowName ? "rgba(255,255,255,0.02)" : "rgba(20,20,20,0.95)",
+                  borderColor: "rgba(255,255,255,0.1)",
+                }}
+              >
+                <option value="">Seat</option>
+                {derivedRowDef && Array.from({ length: derivedRowDef.to - derivedRowDef.from + 1 }, (_, i) => derivedRowDef.from + i).map((num) => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Order summary */}
@@ -877,9 +952,19 @@ function SuccessView({ token, onClose, theatreName }: { token: string; onClose: 
         <CheckCircle2 className="w-8 h-8 text-green-400" />
       </div>
       <div>
-        <h2 className="text-xl font-bold text-white">Order Placed!</h2>
-        <p className="text-slate-400 text-sm mt-1">We&apos;ve received your order. Our team will deliver it directly to your seat.</p>
+        <h2 className="text-xl font-bold text-white">Order Confirmed! 🎉</h2>
+        <p className="text-slate-400 text-sm mt-1">Your order has been received and is being prepared. Sit back and enjoy — we&apos;ll deliver it right to your seat.</p>
       </div>
+
+      {/* Estimated delivery banner */}
+      <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl" style={{background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.2)"}}>
+        <span className="text-xl">⏱️</span>
+        <div className="text-left">
+          <p className="text-amber-400 font-bold text-sm">Estimated Delivery</p>
+          <p className="text-amber-300/80 text-xs mt-0.5">Your order will arrive within <strong className="text-amber-300">15 – 20 minutes</strong></p>
+        </div>
+      </div>
+
       <div className="w-full rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 text-left">
         <div className="mb-3 pb-3 border-b border-slate-700/50">
           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-1">Seller / Service Provider</p>
