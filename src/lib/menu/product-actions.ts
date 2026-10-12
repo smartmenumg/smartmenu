@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { productSchema, productCustomizationSchema } from "@/lib/validations/schemas";
 import { logAudit } from "@/lib/audit/logger";
