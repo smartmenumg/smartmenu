@@ -158,7 +158,15 @@ export async function POST(req: NextRequest) {
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (adminClient as any).from("order_items").insert(itemsWithOrderId);
+    const { error: itemsError } = await (adminClient as any).from("order_items").insert(itemsWithOrderId);
+
+    if (itemsError) {
+      console.error("Failed to insert order items:", itemsError);
+      // Roll back the parent order so we don't leave a ghost order with no items
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (adminClient as any).from("orders").delete().eq("id", orderId);
+      return NextResponse.json({ error: "Failed to save order items. Please try again." }, { status: 500 });
+    }
 
     // 3. Create Cashfree Order
     const cfRes = await createCashfreeOrder({
