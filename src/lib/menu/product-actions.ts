@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { productSchema, productCustomizationSchema } from "@/lib/validations/schemas";
@@ -13,7 +12,10 @@ const MENU_PATH = "/dashboard/menu/products";
 // ─── Get all products for a theatre ──────────────────────────────────────────
 
 export async function getProducts(theatreId: string): Promise<Product[]> {
-  const supabase = await createClient();
+  // Use the admin client so that RLS does not filter out unavailable products.
+  // The admin UI must show ALL active products (including those marked unavailable)
+  // so that operators can toggle them back on.
+  const supabase = await createAdminClient();
   const { data, error } = await supabase
     .from("products")
     .select("*, category:categories(name)")
