@@ -49,6 +49,33 @@ export async function getAdminOrders(): Promise<OrderWithDetails[]> {
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
+/**
+ * Fetch a single order with full details by its ID (admin client bypasses RLS).
+ */
+export async function getOrderById(orderId: string): Promise<OrderWithDetails | null> {
+  const session = await getCurrentProfile();
+  if (!session) return null;
+
+  const admin = await createAdminClient();
+  const { data, error } = await admin
+    .from("orders")
+    .select(`
+      *,
+      auditoriums ( id, name ),
+      order_items ( * ),
+      payments ( * )
+    `)
+    .eq("id", orderId)
+    .single();
+
+  if (error || !data) {
+    console.error("getOrderById error:", error);
+    return null;
+  }
+
+  return data as unknown as OrderWithDetails;
+}
+
 /** Update order status */
 export async function updateOrderStatus(
   orderId: string,

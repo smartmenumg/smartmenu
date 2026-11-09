@@ -8,7 +8,7 @@ import { formatPrice } from "@/lib/utils";
 import {
   ClipboardList, Clock, CheckCircle2,
   RefreshCw, Smartphone, MapPin, ChevronDown, ChevronUp, Printer, Wifi, WifiOff,
-  Moon, Sun, AlertTriangle, Volume2, LogOut,
+  Moon, Sun, AlertTriangle, Volume2, VolumeX, LogOut,
 } from "lucide-react";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import type { UserRole } from "@/types/database";
@@ -191,29 +191,109 @@ function OrderCard({
   );
 }
 
+const STATUS_RANK: Record<string, number> = {
+  confirmed: 1, accepted: 2, preparing: 3, ready: 4, delivered: 5, cancelled: 6, pending_payment: 0,
+};
+
 function useOrderSound() {
-  const audioRef = useRef<AudioContext | null>(null);
-  return useCallback(() => {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
+
+  const getOrCreateContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
     try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      audioRef.current = ctx;
-      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
-        const osc = ctx.createOscillator(), gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = freq; osc.type = "sine";
-        gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
-        gain.gain.linearRampToValueAtTime(0.28, ctx.currentTime + i * 0.12 + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.35);
-        osc.start(ctx.currentTime + i * 0.12);
-        osc.stop(ctx.currentTime + i * 0.12 + 0.4);
-      });
-    } catch { /* blocked before user interaction */ }
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return null;
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        audioCtxRef.current = new AudioCtx();
+      }
+      return audioCtxRef.current;
+    } catch {
+      return null;
+    }
   }, []);
+
+  const unlockAudio = useCallback(async () => {
+    const ctx = getOrCreateContext();
+    if (!ctx) return;
+    try {
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+      if (ctx.state === "running") {
+        setIsAudioUnlocked(true);
+      }
+    } catch {
+      // browser may still require user gesture
+    }
+  }, [getOrCreateContext]);
+
+  useEffect(() => {
+    const handleInteraction = () => {
+      unlockAudio();
+    };
+
+    window.addEventListener("click", handleInteraction, { passive: true });
+    window.addEventListener("touchstart", handleInteraction, { passive: true });
+    window.addEventListener("keydown", handleInteraction, { passive: true });
+
+    const ctx = getOrCreateContext();
+    if (ctx && ctx.state === "running") {
+      setIsAudioUnlocked(true);
+    }
+
+    return () => {
+      window.removeEventListener("click", handleInteraction);
+      window.removeEventListener("touchstart", handleInteraction);
+      window.removeEventListener("keydown", handleInteraction);
+    };
+  }, [unlockAudio, getOrCreateContext]);
+
+  const playChime = useCallback(async () => {
+    try {
+      const ctx = getOrCreateContext();
+      if (!ctx) return;
+
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+
+      if (ctx.state === "running") {
+        setIsAudioUnlocked(true);
+      }
+
+      const now = ctx.currentTime;
+      // High-clarity 2-burst melodic chime (C5 -> E5 -> G5 -> C6)
+      const bursts = [0, 0.42];
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+
+      bursts.forEach(burstDelay => {
+        notes.forEach((freq, i) => {
+          const startTime = now + burstDelay + i * 0.09;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.35, startTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.32);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 0.35);
+        });
+      });
+    } catch (e) {
+      console.warn("[OrderSound] Audio play failed:", e);
+    }
+  }, [getOrCreateContext]);
+
+  return { playChime, isAudioUnlocked, unlockAudio };
 }
-
-
-
-
 
 interface AdminOrdersClientProps {
   initialOrders: OrderWithDetails[];
@@ -242,7 +322,12 @@ export function AdminOrdersClient({
   const [isDayEnded, setIsDayEnded]     = useState(initialDayEnded);
   const [dayEndLoading, startDayEnd]    = useTransition();
   const [showDropdown, setShowDropdown] = useState(false);
-  const playChime = useOrderSound();
+  const { playChime, isAudioUnlocked, unlockAudio } = useOrderSound();
+
+  const handleEnableSound = async () => {
+    await unlockAudio();
+    playChime();
+  };
 
   useEffect(() => {
     setOrders(initialOrders);
@@ -259,12 +344,20 @@ export function AdminOrdersClient({
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, updated_at: updatedAt } : o));
   }, []);
 
-  const STATUS_RANK: Record<string, number> = {
-    confirmed: 1, accepted: 2, preparing: 3, ready: 4, delivered: 5, cancelled: 6, pending_payment: 0,
-  };
   const mergePollOrders = useCallback((fresh: OrderWithDetails[]) => {
     setOrders(prev => {
       const prevMap = new Map(prev.map(o => [o.id, o]));
+      // If a brand new active order arrived via polling that wasn't already in our local list, alert the admin
+      const hasNewOrder = fresh.some(
+        o => !prevMap.has(o.id) && (o.status === "confirmed" || ACTIVE_STATUSES.includes(o.status))
+      );
+      if (hasNewOrder) {
+        setTimeout(() => {
+          playChime();
+          setActiveTab("active");
+        }, 0);
+      }
+
       const merged = fresh.map(o => {
         const existing = prevMap.get(o.id);
         if (existing && (STATUS_RANK[existing.status] ?? 0) > (STATUS_RANK[o.status] ?? 0)) {
@@ -276,9 +369,9 @@ export function AdminOrdersClient({
       const local = prev.filter(o => !freshIds.has(o.id));
       return [...merged, ...local];
     });
-  }, []);
+  }, [playChime]);
 
-  useRealtimeOrders({ theatreId: isAllView ? "" : theatreId, onNewOrder: handleNewOrder, onStatusUpdate: handleRealtimeUpdate, pollFn: getAdminOrders, onPollResult: mergePollOrders, pollIntervalMs: 8000 });
+  useRealtimeOrders({ theatreId, onNewOrder: handleNewOrder, onStatusUpdate: handleRealtimeUpdate, pollFn: getAdminOrders, onPollResult: mergePollOrders, pollIntervalMs: 8000 });
 
   const filteredOrders = isAllView
     ? orders
@@ -334,6 +427,26 @@ export function AdminOrdersClient({
               : <><WifiOff className="w-3 h-3 text-slate-400" /><span className="text-[11px] text-slate-400">Connecting</span></>
             }
           </div>
+
+          {isAudioUnlocked ? (
+            <button
+              onClick={playChime}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all"
+              title="Sound alert is enabled. Click to test sound."
+            >
+              <Volume2 className="w-3 h-3 text-emerald-600" />
+              <span className="hidden sm:inline">Sound On</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleEnableSound}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all animate-pulse"
+              title="Browser autoplay policy requires a click to allow sound. Click to enable."
+            >
+              <VolumeX className="w-3 h-3" />
+              <span>Enable Sound</span>
+            </button>
+          )}
 
           <button
             onClick={handleDayEnd}

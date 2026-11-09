@@ -1,18 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import { getOrderById } from "@/lib/orders/order-actions";
 import type { OrderWithDetails, OrderStatus } from "@/types/database";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 let realtimeClient: ReturnType<typeof createClient> | null = null;
 function getRealtimeClient() {
   if (!realtimeClient) {
-    realtimeClient = createClient(supabaseUrl, supabaseAnonKey, {
-      realtime: { params: { eventsPerSecond: 10 } },
-    });
+    realtimeClient = createClient();
   }
   return realtimeClient;
 }
@@ -61,12 +57,17 @@ export function useRealtimeOrders({
       }, async (payload) => {
         const row = payload.new as Record<string, unknown>;
         if (row.status === "confirmed") {
-          const { data } = await client
-            .from("orders")
-            .select("*, auditoriums(id, name), order_items(*), payments(*)")
-            .eq("id", row.id as string)
-            .single();
-          if (data) onNewOrderRef.current(data as unknown as OrderWithDetails);
+          const fullOrder = await getOrderById(row.id as string);
+          if (fullOrder) {
+            onNewOrderRef.current(fullOrder);
+          } else {
+            const { data } = await client
+              .from("orders")
+              .select("*, auditoriums(id, name), order_items(*), payments(*)")
+              .eq("id", row.id as string)
+              .single();
+            if (data) onNewOrderRef.current(data as unknown as OrderWithDetails);
+          }
         }
       })
       .on("postgres_changes", {
@@ -84,13 +85,18 @@ export function useRealtimeOrders({
         // If it's an active status, it might be an order we missed (e.g. transitioned from pending_payment)
         // Fetch the full order and pass it to onNewOrder (which safely deduplicates)
         if (status !== "pending_payment" && status !== "cancelled") {
-          const { data } = await client
-            .from("orders")
-            .select("*, auditoriums(id, name), order_items(*), payments(*)")
-            .eq("id", row.id as string)
-            .single();
-          if (data) {
-            onNewOrderRef.current(data as unknown as OrderWithDetails);
+          const fullOrder = await getOrderById(row.id as string);
+          if (fullOrder) {
+            onNewOrderRef.current(fullOrder);
+          } else {
+            const { data } = await client
+              .from("orders")
+              .select("*, auditoriums(id, name), order_items(*), payments(*)")
+              .eq("id", row.id as string)
+              .single();
+            if (data) {
+              onNewOrderRef.current(data as unknown as OrderWithDetails);
+            }
           }
         }
       })
